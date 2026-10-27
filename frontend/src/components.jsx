@@ -232,7 +232,9 @@ export function ProjectDetail({ project, preview = false }) {
     <article className="project-detail">
       {preview && <p className="preview-banner">Unpublished preview · only visible to you</p>}
       <div className="detail-heading">
-        <p className="eyebrow">PROJECT NOTES / {String((project.position ?? 0) + 1).padStart(2, '0')}</p>
+        <p className="eyebrow">
+          CASE FILE / {String((project.position ?? 0) + 1).padStart(2, '0')}
+        </p>
         <h1>{project.title}</h1>
         <p className="lead">{project.tagline}</p>
         <Tags items={project.technologies} />
@@ -281,7 +283,9 @@ export function ProjectDetail({ project, preview = false }) {
                 <figure key={url}>
                   <img
                     src={url}
-                    alt={imageDescriptions[project.slug] || `${project.title} interface view ${i + 1}.`}
+                    alt={
+                      imageDescriptions[project.slug] || `${project.title} interface view ${i + 1}.`
+                    }
                     loading="lazy"
                     decoding="async"
                   />
@@ -297,22 +301,20 @@ export function ProjectDetail({ project, preview = false }) {
             ['My contribution', project.contribution],
             ['Challenges & trade-offs', project.challenges],
             ['What I learned', project.learnings],
-          ].map(
-            ([name, text]) => {
-              const id = {
-                Architecture: 'architecture',
-                'My contribution': 'contribution',
-                'Challenges & trade-offs': 'challenges',
-                'What I learned': 'learnings',
-              }[name];
-              return text ? (
-                <section id={id} key={id}>
-                  <h2>{name}</h2>
-                  <p className="prose">{text}</p>
-                </section>
-              ) : null;
-            },
-          )}
+          ].map(([name, text]) => {
+            const id = {
+              Architecture: 'architecture',
+              'My contribution': 'contribution',
+              'Challenges & trade-offs': 'challenges',
+              'What I learned': 'learnings',
+            }[name];
+            return text ? (
+              <section id={id} key={id}>
+                <h2>{name}</h2>
+                <p className="prose">{text}</p>
+              </section>
+            ) : null;
+          })}
         </div>
       </div>
       {!preview && (

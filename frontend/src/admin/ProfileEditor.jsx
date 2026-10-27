@@ -93,14 +93,17 @@ export default function ProfileEditor({ onProfileChange }) {
                 key={k}
                 label={l}
                 value={profile[k]}
-                type={k === 'email' ? 'email' : 'url'}
+                type={k === 'email' ? 'email' : k === 'resumeUrl' ? 'text' : 'url'}
+                hint={
+                  k === 'resumeUrl' ? 'Use /resume.pdf for a PDF included in this site.' : undefined
+                }
                 onChange={(v) => change(k, v)}
               />
             ))}
           </div>
           <p className="form-note">
-            Empty optional links are hidden on the public site. Use a hosted PDF URL for your
-            resume.
+            Empty optional links are hidden on the public site. A resume can use a hosted URL or a
+            site path such as /resume.pdf.
           </p>
           <button className="button" disabled={busy}>
             {busy ? 'Saving…' : 'Save profile'}

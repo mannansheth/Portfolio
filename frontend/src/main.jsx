@@ -7,6 +7,7 @@ import './styles.css';
 import './dark-mode.css';
 import './projects.css';
 import './design-system.css';
+import './atlas.css';
 createRoot(document.getElementById('root')).render(
   <BrowserRouter>
     <ThemeProvider>

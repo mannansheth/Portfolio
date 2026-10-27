@@ -9,6 +9,16 @@ const url = z
       .refine((v) => /^https?:\/\//i.test(v), 'Use an HTTP or HTTPS URL'),
   ])
   .default('');
+const resumeLink = z
+  .union([
+    url,
+    z
+      .string()
+      .max(2000)
+      .regex(/^\/(?!\/)[A-Za-z0-9_./%-]+$/)
+      .refine((v) => !v.split('/').includes('..'), 'Use a path within this site'),
+  ])
+  .default('');
 const list = (length, max) =>
   z
     .array(text(length))
@@ -58,7 +68,7 @@ export const profileSchema = z.object({
   skills: z.array(text(100)).max(60),
   github: url,
   linkedin: url,
-  resumeUrl: url,
+  resumeUrl: resumeLink,
   email: z.union([z.literal(''), z.email()]),
   version: z.number().int().positive().optional(),
 });

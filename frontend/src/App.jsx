@@ -13,6 +13,7 @@ import {
 } from './components.jsx';
 import Admin from './admin/Admin.jsx';
 import WorkGallery from './WorkGallery.jsx';
+import ProjectAtlas from './ProjectAtlas.jsx';
 import PortraitReveal from './PortraitReveal.jsx';
 
 function setPageMetadata(title, description) {
@@ -205,6 +206,18 @@ function Home({ profile, projects }) {
           </Link>
         </div>
       </section>
+      {profile.experience && (
+        <section className="experience-highlight">
+          <div>
+            <p className="eyebrow">RECENT INDUSTRY PROJECT / SCIENTIFIC SCHOLAR</p>
+            <h2>Finance workflows, in one place.</h2>
+            <p>{profile.experience}</p>
+          </div>
+          <Link className="text-link" to="/about">
+            More about my experience ↗
+          </Link>
+        </section>
+      )}
       <section className="skills-section">
         <p className="eyebrow">TOOLS I USE</p>
         <Tags items={profile.skills} graphic />
@@ -225,29 +238,7 @@ function Home({ profile, projects }) {
   );
 }
 function Work({ projects }) {
-  return (
-    <section className="page work-section folio-page">
-      <header className="folio-heading">
-        <p className="folio-kicker">Portfolio / Computer engineering</p>
-        <div className="folio-heading-row">
-          <h1>
-            Selected <em>work.</em>
-            <sup>{String(projects.length).padStart(2, '0')}</sup>
-          </h1>
-          <p>
-            Applications, experiments,
-            <br />
-            and the thinking behind them.
-          </p>
-        </div>
-        <div className="folio-heading-foot">
-          <span>SOFTWARE / SYSTEMS / EXPLORATION</span>
-          <span>SCROLL TO EXPLORE</span>
-        </div>
-      </header>
-      <WorkGallery projects={projects} />
-    </section>
-  );
+  return <ProjectAtlas projects={projects} />;
 }
 function About({ profile }) {
   return (
@@ -282,7 +273,11 @@ function About({ profile }) {
             <Tags items={profile.skills} graphic />
           </section>
           <div className="inline-links">
-            <External href={profile.resumeUrl}>Download resume ↗</External>
+            {profile.resumeUrl && (
+              <a href={profile.resumeUrl} download>
+                Download resume ↗
+              </a>
+            )}
             <External href={profile.github}>GitHub ↗</External>
             <External href={profile.linkedin}>LinkedIn ↗</External>
           </div>
@@ -447,13 +442,17 @@ export default function App() {
     } else if (path === '/about') {
       setPageMetadata(`About ${profile.name}`, profile.biography);
     } else if (path === '/contact') {
-      setPageMetadata(`Contact ${profile.name}`, 'Get in touch about a project, a question, or an interesting problem.');
+      setPageMetadata(
+        `Contact ${profile.name}`,
+        'Get in touch about a project, a question, or an interesting problem.',
+      );
     } else if (path.startsWith('/work/')) {
       const slug = path.split('/').filter(Boolean).at(-1);
       const project = projects.find((item) => item.slug === slug);
       setPageMetadata(
         project ? `${project.title} — ${profile.name}` : `Project notes — ${profile.name}`,
-        project?.tagline || 'Project case studies, implementation details, and engineering decisions.',
+        project?.tagline ||
+          'Project case studies, implementation details, and engineering decisions.',
       );
     } else {
       setPageMetadata(`Page not found — ${profile.name}`, 'The requested page could not be found.');
