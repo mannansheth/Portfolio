@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { api } from '../api.js';
-import { Field, Feedback, External, Tags } from '../components.jsx';
+import { Field, Feedback, External, Tags, Icon } from '../components.jsx';
 import { emptyProject } from './ProjectEditor.jsx';
 export default function Importer({ onDraft, onExisting }) {
   const [repositories, setRepositories] = useState([]),
@@ -96,10 +96,14 @@ export default function Importer({ onDraft, onExisting }) {
   );
   return (
     <div>
-      <p className="eyebrow">REPOSITORY SOURCE → EDITABLE DRAFT</p>
+      <p className="eyebrow">REPOSITORY SOURCE <Icon name="right" /> EDITABLE DRAFT</p>
       <h1>Import from GitHub.</h1>
       <p className="admin-intro">
         Inspect before you import. Generated descriptions always open as drafts for your review.
+      </p>
+      <p className="form-note">
+        After import, assign one or more Atlas connections in the project editor. Reuse an existing
+        label or add a new one; uncategorized projects stay visible under “Needs a connection.”
       </p>
       <Feedback error={error} />
       <div className="import-layout">
@@ -194,7 +198,7 @@ export default function Importer({ onDraft, onExisting }) {
               onChange={setUrl}
               placeholder="https://github.com/owner/repository"
             />
-            <button disabled={busy}>{busy ? 'Inspecting…' : 'Inspect repository ↗'}</button>
+            <button disabled={busy}>{busy ? 'Inspecting…' : <>Inspect repository <Icon name="external" /></>}</button>
           </form>
           {evidence && (
             <div className="panel evidence-panel">
@@ -214,8 +218,13 @@ export default function Importer({ onDraft, onExisting }) {
                 {evidence.description ||
                   'No repository description. Add context manually or generate a source-based draft.'}
               </p>
+              <p className="form-note">
+                Analysis uses {evidence.coverage?.inspectedFiles ?? evidence.files.length} selected
+                documentation and source files from the {evidence.defaultBranch || 'default'}{' '}
+                branch. Review the source list and warnings before generating a draft.
+              </p>
               <Tags items={evidence.languages} />
-              <External href={evidence.url}>View on GitHub ↗</External>
+              <External href={evidence.url}>View on GitHub <Icon name="external" /></External>
               {evidence.warnings.map((w, i) => (
                 <p className="feedback error" key={i}>
                   {w}
@@ -264,7 +273,9 @@ export default function Importer({ onDraft, onExisting }) {
                     )}
                     <button
                       className="button"
-                      disabled={busy || (evidence.private && !allowPrivateSource)}
+                      disabled={
+                        busy || !evidence.files.length || (evidence.private && !allowPrivateSource)
+                      }
                       onClick={generate}
                     >
                       {busy ? 'Generating…' : 'Generate draft with Gemini'}

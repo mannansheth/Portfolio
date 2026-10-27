@@ -7,12 +7,18 @@ export const emptyProject = {
   tagline: '',
   overview: '',
   problem: '',
+  outcomes: '',
   architecture: '',
   contribution: '',
   challenges: '',
   learnings: '',
   features: [],
   technologies: [],
+  connections: [],
+  sourcePaths: [],
+  sourceWarnings: [],
+  treeTruncated: false,
+  claimEvidence: [],
   missingInformation: [],
   suggestedSections: [],
   coverImage: '',
@@ -27,6 +33,11 @@ export const emptyProject = {
   featured: false,
   position: 0,
 };
+const suggestedConnections = [
+  'Useful workflows',
+  'Interaction & feedback',
+  'Learning under constraints',
+];
 export default function ProjectEditor({ initial, onSave, onCancel }) {
   const [project, setProject] = useState({ ...emptyProject, ...initial }),
     [preview, setPreview] = useState(false),
@@ -142,6 +153,7 @@ export default function ProjectEditor({ initial, onSave, onCancel }) {
                   'tagline',
                   'overview',
                   'problem',
+                  'outcomes',
                   'features',
                   'technologies',
                   'architecture',
@@ -153,14 +165,29 @@ export default function ProjectEditor({ initial, onSave, onCancel }) {
                 setProject((p) => ({
                   ...p,
                   ...Object.fromEntries(keys.map((k) => [k, candidate[k]])),
+                  connections: p.connections?.length
+                    ? p.connections
+                    : (candidate.connections ?? []),
+                  sourcePaths: candidate.sourcePaths ?? [],
+                  sourceWarnings: candidate.sourceWarnings ?? [],
+                  treeTruncated: candidate.treeTruncated ?? false,
+                  claimEvidence: candidate.claimEvidence ?? [],
                 }));
                 setCandidate(null);
+                setBusy(false);
                 setMessage('Generated text applied to the editor. Review and save when ready.');
               }}
             >
               Replace descriptive fields
             </button>
-            <button onClick={() => setCandidate(null)}>Keep my text</button>
+            <button
+              onClick={() => {
+                setCandidate(null);
+                setBusy(false);
+              }}
+            >
+              Keep my text
+            </button>
           </div>
         </div>
       )}
@@ -211,9 +238,33 @@ export default function ProjectEditor({ initial, onSave, onCancel }) {
               onChange={(v) => change('tagline', v)}
               maxLength={300}
             />
+            <Field
+              label="Atlas connections"
+              value={(project.connections || []).join('\n')}
+              multiline
+              rows={3}
+              onChange={(v) => change('connections', v.split('\n'))}
+              hint="One connection per line. Reuse a suggestion or type a new label; a new label creates a new path in the Work atlas. If left blank, this project appears under Needs a connection."
+            />
+            <div className="connection-suggestions" aria-label="Suggested atlas connections">
+              <span>ADD A COMMON CONNECTION</span>
+              {suggestedConnections.map((label) => (
+                <button
+                  type="button"
+                  key={label}
+                  disabled={(project.connections || []).some(
+                    (item) => item.trim().toLocaleLowerCase() === label.toLocaleLowerCase(),
+                  )}
+                  onClick={() => change('connections', [...(project.connections || []), label])}
+                >
+                  + {label}
+                </button>
+              ))}
+            </div>
             {[
               ['overview', 'Overview'],
               ['problem', 'Problem & purpose'],
+              ['outcomes', 'Results & validation'],
               ['architecture', 'Architecture & decisions'],
               ['contribution', 'My individual contribution'],
               ['challenges', 'Challenges & trade-offs'],
@@ -226,7 +277,12 @@ export default function ProjectEditor({ initial, onSave, onCancel }) {
                 multiline
                 rows={key === 'architecture' ? 6 : 4}
                 onChange={(v) => change(key, v)}
-                maxLength={key === 'architecture' ? 15000 : 10000}
+                hint={
+                  key === 'outcomes'
+                    ? 'Use only measured results or documented evaluation. Leave unsupported impact blank.'
+                    : undefined
+                }
+                maxLength={key === 'architecture' ? 15000 : key === 'outcomes' ? 5000 : 10000}
               />
             ))}
             {[
@@ -340,6 +396,30 @@ export default function ProjectEditor({ initial, onSave, onCancel }) {
                 Refresh fetches source evidence without changing your text. Gemini generation opens
                 a separate replacement draft.
               </p>
+              {project.sourcePaths?.length > 0 && (
+                <details className="source-audit">
+                  <summary>
+                    Analysis sources ({project.sourcePaths.length} files
+                    {project.treeTruncated ? ', partial repository tree' : ''})
+                  </summary>
+                  {project.sourceWarnings?.map((warning) => (
+                    <p className="feedback error" key={warning}>
+                      {warning}
+                    </p>
+                  ))}
+                  {project.claimEvidence?.length > 0 && (
+                    <ul>
+                      {project.claimEvidence.map((item, index) => (
+                        <li key={`${item.claim}-${index}`}>
+                          <strong>{item.claim}</strong>
+                          <small>{item.sources.join(' · ')}</small>
+                        </li>
+                      ))}
+                    </ul>
+                  )}
+                  <p className="form-note">Inspected files: {project.sourcePaths.join(' · ')}</p>
+                </details>
+              )}
               {project.id && (
                 <button type="button" disabled={busy || !project.repositoryUrl} onClick={refresh}>
                   Refresh evidence

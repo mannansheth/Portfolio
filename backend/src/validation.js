@@ -25,18 +25,49 @@ const list = (length, max) =>
     .max(max)
     .transform((items) => items.filter(Boolean))
     .default([]);
+const connections = z
+  .array(text(80).min(1))
+  .max(8)
+  .transform((items) => [
+    ...new Map(items.map((label) => [label.toLocaleLowerCase(), label])).values(),
+  ])
+  .default([]);
+const claimEvidence = z
+  .array(
+    z.object({
+      section: z.enum([
+        'overview',
+        'problem',
+        'outcomes',
+        'architecture',
+        'features',
+        'challenges',
+        'learnings',
+      ]),
+      claim: text(500).min(1),
+      sources: list(500, 8),
+    }),
+  )
+  .max(30)
+  .default([]);
 export const projectSchema = z.object({
   title: text(150).min(1),
   slug: text(120).regex(/^[a-z0-9]+(?:-[a-z0-9]+)*$/),
   tagline: text(300).default(''),
   overview: text().default(''),
   problem: text().default(''),
+  outcomes: text(5000).default(''),
   architecture: text(15000).default(''),
   contribution: text().default(''),
   challenges: text().default(''),
   learnings: text().default(''),
   features: list(500, 30),
   technologies: list(100, 40),
+  connections,
+  sourcePaths: list(500, 30),
+  sourceWarnings: list(1000, 20),
+  treeTruncated: z.boolean().default(false),
+  claimEvidence,
   missingInformation: list(500, 20),
   suggestedSections: list(100, 15),
   coverImage: url,

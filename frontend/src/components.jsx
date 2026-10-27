@@ -1,6 +1,8 @@
 import { Link, NavLink, useLocation } from 'react-router-dom';
 import { useEffect, useState, useId, useRef } from 'react';
 import { ThemeToggle } from './Theme.jsx';
+import { Icon } from './Icon.jsx';
+export { Icon } from './Icon.jsx';
 export function External({ href, children, ...props }) {
   return href ? (
     <a href={href} target="_blank" rel="noopener noreferrer" {...props}>
@@ -8,6 +10,178 @@ export function External({ href, children, ...props }) {
     </a>
   ) : null;
 }
+
+export function PixelRevealImage({ src, alt, objectPositionY = 0.5, fetchPriority = 'auto' }) {
+  const frameRef = useRef(null);
+  const imageRef = useRef(null);
+  const canvasRef = useRef(null);
+  const drawRef = useRef(() => {});
+  const pointRef = useRef(null);
+  const touchActiveRef = useRef(false);
+  const [active, setActive] = useState(false);
+
+  useEffect(() => {
+    const frame = frameRef.current;
+    const image = imageRef.current;
+    const canvas = canvasRef.current;
+    const context = canvas?.getContext('2d');
+    if (!frame || !image || !canvas || !context) return undefined;
+
+    let animationFrame = 0;
+    const draw = () => {
+      animationFrame = 0;
+      const bounds = frame.getBoundingClientRect();
+      if (!image.complete || !image.naturalWidth || !bounds.width || !bounds.height) return;
+
+      const blockSize = 12;
+      const pixelWidth = Math.max(1, Math.ceil(bounds.width / blockSize));
+      const pixelHeight = Math.max(1, Math.ceil(bounds.height / blockSize));
+      if (canvas.width !== pixelWidth || canvas.height !== pixelHeight) {
+        canvas.width = pixelWidth;
+        canvas.height = pixelHeight;
+      }
+
+      context.clearRect(0, 0, pixelWidth, pixelHeight);
+      context.imageSmoothingEnabled = true;
+      context.imageSmoothingQuality = 'high';
+
+      // Match object-fit: cover so the pixel layer stays registered with the sharp image.
+      const scale = Math.max(bounds.width / image.naturalWidth, bounds.height / image.naturalHeight);
+      const sourceWidth = bounds.width / scale;
+      const sourceHeight = bounds.height / scale;
+      const sourceX = (image.naturalWidth - sourceWidth) / 2;
+      const sourceY = (image.naturalHeight - sourceHeight) * objectPositionY;
+      context.drawImage(
+        image,
+        sourceX,
+        sourceY,
+        sourceWidth,
+        sourceHeight,
+        0,
+        0,
+        pixelWidth,
+        pixelHeight,
+      );
+
+      if (pointRef.current) {
+        const revealScale = Math.min(pixelWidth / bounds.width, pixelHeight / bounds.height);
+        context.globalCompositeOperation = 'destination-out';
+        context.beginPath();
+        context.arc(
+          pointRef.current.x * (pixelWidth / bounds.width),
+          pointRef.current.y * (pixelHeight / bounds.height),
+          88 * revealScale,
+          0,
+          Math.PI * 2,
+        );
+        context.fill();
+        context.globalCompositeOperation = 'source-over';
+      }
+    };
+
+    const scheduleDraw = () => {
+      if (!animationFrame) animationFrame = requestAnimationFrame(draw);
+    };
+    drawRef.current = scheduleDraw;
+
+    const observer = new ResizeObserver(scheduleDraw);
+    observer.observe(frame);
+    image.addEventListener('load', scheduleDraw);
+    scheduleDraw();
+
+    return () => {
+      observer.disconnect();
+      image.removeEventListener('load', scheduleDraw);
+      if (animationFrame) cancelAnimationFrame(animationFrame);
+      drawRef.current = () => {};
+    };
+  }, [objectPositionY, src]);
+
+  const revealAt = (clientX, clientY) => {
+    const bounds = frameRef.current?.getBoundingClientRect();
+    if (!bounds) return;
+    pointRef.current = {
+      x: Math.max(0, Math.min(bounds.width, clientX - bounds.left)),
+      y: Math.max(0, Math.min(bounds.height, clientY - bounds.top)),
+    };
+    setActive(true);
+    drawRef.current();
+  };
+
+  const hideReveal = () => {
+    pointRef.current = null;
+    setActive(false);
+    drawRef.current();
+  };
+
+  function moveWithKeyboard(event) {
+    const steps = {
+      ArrowLeft: [-20, 0],
+      ArrowRight: [20, 0],
+      ArrowUp: [0, -20],
+      ArrowDown: [0, 20],
+    };
+    const step = steps[event.key];
+    if (!step) return;
+    event.preventDefault();
+    const bounds = frameRef.current?.getBoundingClientRect();
+    if (!bounds) return;
+    const current = pointRef.current || { x: bounds.width / 2, y: bounds.height / 2 };
+    pointRef.current = {
+      x: Math.max(0, Math.min(bounds.width, current.x + step[0])),
+      y: Math.max(0, Math.min(bounds.height, current.y + step[1])),
+    };
+    setActive(true);
+    drawRef.current();
+  }
+
+  return (
+    <div
+      ref={frameRef}
+      className={`pixel-reveal-layer${active ? ' is-active' : ''}`}
+      role="group"
+      tabIndex={0}
+      aria-label={`${alt} Move the pointer, drag on a touchscreen, or use the arrow keys to reveal it.`}
+      onPointerDown={(event) => {
+        if (event.pointerType === 'touch') {
+          touchActiveRef.current = true;
+          event.currentTarget.setPointerCapture(event.pointerId);
+        }
+        revealAt(event.clientX, event.clientY);
+      }}
+      onPointerMove={(event) => {
+        if (event.pointerType !== 'touch' || touchActiveRef.current)
+          revealAt(event.clientX, event.clientY);
+      }}
+      onPointerLeave={(event) => {
+        if (event.pointerType !== 'touch') hideReveal();
+      }}
+      onPointerUp={(event) => {
+        if (event.pointerType === 'touch') {
+          touchActiveRef.current = false;
+          hideReveal();
+        }
+      }}
+      onPointerCancel={() => {
+        touchActiveRef.current = false;
+        hideReveal();
+      }}
+      onFocus={(event) => {
+        const bounds = event.currentTarget.getBoundingClientRect();
+        revealAt(bounds.left + bounds.width / 2, bounds.top + bounds.height / 2);
+      }}
+      onBlur={hideReveal}
+      onKeyDown={moveWithKeyboard}
+    >
+      <img ref={imageRef} src={src} alt={alt} fetchPriority={fetchPriority} draggable="false" />
+      <canvas ref={canvasRef} aria-hidden="true" />
+      <span className="pixel-reveal-hint" aria-hidden="true">
+        HOVER / DRAG TO REVEAL
+      </span>
+    </div>
+  );
+}
+
 export function Feedback({ error, message }) {
   return error ? (
     <p className="feedback error" role="alert">
@@ -27,7 +201,7 @@ export function Header({ profile }) {
     <header className="site-header">
       <Link className="wordmark" to="/" aria-label={`${profile.name}, home`}>
         {profile.name}
-        <span className="mark">↗</span>
+        <span className="mark"><Icon name="external" /></span>
       </Link>
       <div className="header-controls">
         <ThemeToggle />
@@ -37,14 +211,14 @@ export function Header({ profile }) {
           aria-controls="main-nav"
           onClick={() => setOpen(!open)}
         >
-          {open ? 'Close' : 'Menu'} <span aria-hidden="true">{open ? '−' : '+'}</span>
+          {open ? 'Close' : 'Menu'} <Icon name={open ? 'minus' : 'plus'} />
         </button>
       </div>
       <nav id="main-nav" className={open ? 'open' : ''} aria-label="Main navigation">
         <NavLink to="/work">Work</NavLink>
         <NavLink to="/about">About</NavLink>
         <NavLink to="/contact">
-          Contact <span aria-hidden="true">↗</span>
+          Contact <Icon name="external" />
         </NavLink>
       </nav>
     </header>
@@ -88,14 +262,19 @@ export function Footer({ profile }) {
       <div>
         <Link to="/" className="wordmark">
           {profile.name}
-          <span className="mark">↗</span>
+          <span className="mark"><Icon name="external" /></span>
         </Link>
         <p>Software, systems, and the details in between.</p>
       </div>
       <div className="footer-links">
-        <External href={profile.github}>GitHub ↗</External>
-        <External href={profile.linkedin}>LinkedIn ↗</External>
-        <Link to="/contact">Get in touch ↗</Link>
+        {profile.resumeUrl && (
+          <a href={profile.resumeUrl} download>
+            Resume <Icon name="external" />
+          </a>
+        )}
+        <External href={profile.github}>GitHub <Icon name="external" /></External>
+        <External href={profile.linkedin}>LinkedIn <Icon name="external" /></External>
+        <Link to="/contact">Get in touch <Icon name="external" /></Link>
       </div>
       <div className="footer-note">
         <span>
@@ -144,7 +323,6 @@ const technologyIcons = {
   Flutter: 'flutter/flutter-original.svg',
   'ASP.NET Core': 'dotnetcore/dotnetcore-original.svg',
   MySQL: 'mysql/mysql-original.svg',
-  'AWS EC2': 'amazonwebservices/amazonwebservices-original.svg',
   Linux: 'linux/linux-original.svg',
   'HTML Canvas': 'html5/html5-original.svg',
   TensorFlow: 'tensorflow/tensorflow-original.svg',
@@ -162,31 +340,45 @@ const technologyIcons = {
   'C++': 'cplusplus/cplusplus-original.svg',
   HTML: 'html5/html5-original.svg',
   CSS: 'css3/css3-original.svg',
+  'GitHub Actions': 'githubactions/githubactions-original.svg',
+  PennyLane: '/images/skills/pennylane.svg',
+  'NumPy / SciPy': '/images/skills/numpy-scipy.svg',
+  SQL: '/images/skills/sql.svg',
+  SVM: '/images/skills/svm.svg',
+  XGBoost: '/images/skills/xgboost.svg',
+  'AWS EC2': '/images/skills/aws-ec2.svg',
+  NLP: '/images/skills/nlp.svg',
 };
 function technologyIcon(item) {
   if (item === 'SciPy') return 'https://cdn.simpleicons.org/scipy';
   const path = technologyIcons[item];
-  return path ? `https://cdn.jsdelivr.net/gh/devicons/devicon@latest/icons/${path}` : null;
+  if (!path) return '/images/skills/toolkit.svg';
+  if (path.startsWith('/')) return path;
+  return `https://cdn.jsdelivr.net/gh/devicons/devicon@latest/icons/${path}`;
 }
 export function Tags({ items = [], graphic = false }) {
   return (
     <div className={`tags ${graphic ? 'graphic-tags' : ''}`}>
-      {items.map((item, i) => (
-        <span className="tech-chip" key={`${item}-${i}`}>
-          {technologyIcon(item) && (
+      {items.map((item, i) => {
+        const icon = technologyIcon(item);
+        return (
+          <span className="tech-chip" key={`${item}-${i}`}>
             <img
-              src={technologyIcon(item)}
+              src={icon}
               alt=""
               aria-hidden="true"
               loading="lazy"
+              decoding="async"
               onError={(event) => {
-                event.currentTarget.style.display = 'none';
+                if (event.currentTarget.dataset.fallback) return;
+                event.currentTarget.dataset.fallback = 'true';
+                event.currentTarget.src = '/images/skills/toolkit.svg';
               }}
             />
-          )}
-          <span>{item}</span>
-        </span>
-      ))}
+            <span className="tech-label">{item}</span>
+          </span>
+        );
+      })}
     </div>
   );
 }
@@ -212,6 +404,7 @@ export function ProjectDetail({ project, preview = false }) {
     ['Overview', 'overview', Boolean(project.overview)],
     ['The problem', 'problem', Boolean(project.problem)],
     ['What it does', 'features', project.features.length > 0],
+    ['Results & validation', 'outcomes', Boolean(project.outcomes)],
     ['Interface', 'interface', project.images.length > 0],
     ['Architecture', 'architecture', Boolean(project.architecture)],
     ['My contribution', 'contribution', Boolean(project.contribution)],
@@ -239,8 +432,8 @@ export function ProjectDetail({ project, preview = false }) {
         <p className="lead">{project.tagline}</p>
         <Tags items={project.technologies} />
         <div className="inline-links">
-          <External href={project.repositoryUrl}>View repository ↗</External>
-          <External href={project.demoUrl}>Live demo ↗</External>
+          <External href={project.repositoryUrl}>View repository <Icon name="external" /></External>
+          <External href={project.demoUrl}>Live demo <Icon name="external" /></External>
         </div>
       </div>
       <ProjectArt project={project} />
@@ -274,6 +467,12 @@ export function ProjectDetail({ project, preview = false }) {
                   <li key={f}>{f}</li>
                 ))}
               </ul>
+            </section>
+          )}
+          {project.outcomes && (
+            <section id="outcomes">
+              <h2>Results &amp; validation</h2>
+              <p className="prose">{project.outcomes}</p>
             </section>
           )}
           {project.images.length > 0 && (
@@ -319,7 +518,7 @@ export function ProjectDetail({ project, preview = false }) {
       </div>
       {!preview && (
         <Link to="/work" className="text-link">
-          ← All work
+          <Icon name="left" /> All work
         </Link>
       )}
     </article>

@@ -2,6 +2,23 @@ import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { generateDraft } from '../src/ai.js';
 
+const validDraft = {
+  title: 'Wordle',
+  tagline: '',
+  overview: '',
+  problem: '',
+  outcomes: '',
+  architecture: '',
+  challenges: '',
+  learnings: '',
+  features: ['Verified feature'],
+  technologies: [],
+  connections: [],
+  suggestedSections: [],
+  missingInformation: [],
+  claimEvidence: [{ section: 'features', claim: 'Verified feature', sources: ['README.md'] }],
+};
+
 test('configured Gemini fallback recovers temporary errors without bypassing access or quota errors', async () => {
   const original = globalThis.fetch;
   const saved = Object.fromEntries(
@@ -21,7 +38,7 @@ test('configured Gemini fallback recovers temporary errors without bypassing acc
     owner: 'example',
     url: 'https://github.com/example/wordle',
     homepage: '',
-    files: [],
+    files: [{ path: 'README.md', text: 'Wordle' }],
   };
   try {
     globalThis.fetch = async (url) => {
@@ -34,7 +51,7 @@ test('configured Gemini fallback recovers temporary errors without bypassing acc
                 {
                   content: {
                     parts: [
-                      { text: JSON.stringify({ title: 'Wordle', features: ['Verified feature'] }) },
+                      { text: JSON.stringify(validDraft) },
                     ],
                   },
                 },

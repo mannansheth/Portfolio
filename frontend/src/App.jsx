@@ -10,11 +10,11 @@ import {
   Field,
   Feedback,
   CustomCursor,
+  PixelRevealImage,
+  Icon,
 } from './components.jsx';
 import Admin from './admin/Admin.jsx';
-import WorkGallery from './WorkGallery.jsx';
 import ProjectAtlas from './ProjectAtlas.jsx';
-import PortraitReveal from './PortraitReveal.jsx';
 
 function setPageMetadata(title, description) {
   document.title = title;
@@ -144,94 +144,142 @@ function ContributionBoard({ profile }) {
   );
 }
 
+function HomeProjectCard({ project }) {
+  const connections = project.connections?.length ? project.connections : ['Needs a connection'];
+  const href = `/work/${project.slug}`;
+  return (
+    <article className="home-project-card">
+      <div className="home-project-topline">
+        <span>{String((project.position ?? 0) + 1).padStart(2, '0')} / SELECTED</span>
+        <span>{connections[0]}</span>
+      </div>
+      <Link
+        className="home-project-visual"
+        to={href}
+        aria-label={`Open ${project.title} case file`}
+      >
+        {project.images?.[0] ? (
+          <img src={project.images[0]} alt={`${project.title} interface preview`} loading="lazy" />
+        ) : (
+          <div className="home-project-art" aria-hidden="true">
+            <span>{connections[0]}</span>
+            <strong>{project.title}</strong>
+            <i />
+          </div>
+        )}
+        <span className="home-project-open">OPEN CASE FILE <Icon name="external" /></span>
+      </Link>
+      <div className="home-project-copy">
+        <h3>
+          <Link to={href}>{project.title}</Link>
+        </h3>
+        <p>{project.tagline}</p>
+        <div className="home-project-connections" aria-label="Project connections">
+          {connections.map((connection) => (
+            <span key={connection}>{connection}</span>
+          ))}
+        </div>
+        <div className="home-project-bottom">
+          <span>{project.technologies.slice(0, 3).join(' / ')}</span>
+          <Link to={href}>Case file <Icon name="external" /></Link>
+        </div>
+      </div>
+    </article>
+  );
+}
+
 function Home({ profile, projects }) {
+  const featured = projects.filter((project) => project.featured).slice(0, 3);
   return (
     <>
-      <section className="hero">
-        <div className="hero-meta">
+      <section className="home-hero">
+        <div className="home-hero-copy">
           <p className="eyebrow">COMPUTER ENGINEERING / CLASS OF {profile.graduationYear}</p>
-          <span className="location">
-            <span className="location-dot" />
-            {profile.location}
-          </span>
-        </div>
-        <h1>{profile.introduction}</h1>
-        <div className="hero-bottom">
-          <p>{profile.interests}</p>
-          <div className="hero-links">
-            <Link className="button" to="/work">
-              Explore selected work <span>↘</span>
+          <h1>{profile.introduction}</h1>
+          <p className="home-hero-summary">{profile.interests}</p>
+          <p className="home-hero-bio">{profile.biography.split('\n\n')[0]}</p>
+          <div className="home-hero-actions">
+            <Link className="home-primary-action" to="/work">
+              Explore the project map <Icon name="external" />
             </Link>
-            <div className="inline-links">
-              <External href={profile.github}>GitHub ↗</External>
-              <External href={profile.linkedin}>LinkedIn ↗</External>
-              <External href={profile.resumeUrl}>Resume ↗</External>
-              <Link to="/contact">Contact ↗</Link>
-            </div>
+          </div>
+          <div className="home-hero-meta">
+            <span>{profile.location}</span>
+            <span>{String(projects.length).padStart(2, '0')} PROJECTS</span>
+            <span>WEB / SYSTEMS / APPLIED ML</span>
           </div>
         </div>
-        <PortraitReveal />
-        <div className="hero-folio">
-          <span>COMPUTER ENGINEERING / 2028</span>
-          <span>SELECTED PROJECTS</span>
-          <span>BASED IN MUMBAI</span>
-        </div>
+        <figure className="home-hero-cover">
+          <PixelRevealImage
+            src="/images/work/atlas-cover.jpg"
+            alt="Abstract illuminated screens and connections, used as portfolio cover artwork."
+            fetchPriority="high"
+            objectPositionY={0.56}
+          />
+          <figcaption>
+            <span>FIELD NOTES / MANNAN SHETH</span>
+            <a
+              href="https://unsplash.com/photos/abstract-network-of-glowing-screens-in-darkness-f2krpIYBrJc"
+              target="_blank"
+              rel="noopener noreferrer"
+            >
+              Johnny Guitar / Unsplash <Icon name="external" />
+            </a>
+          </figcaption>
+        </figure>
       </section>
-      <section className="work-section">
-        <header className="folio-heading">
-          <p className="folio-kicker">01 / A selection of projects</p>
-          <div className="folio-heading-row">
-            <h2>
-              Selected <em>work.</em>
-            </h2>
-            <p>
-              Applications, experiments,
-              <br />
-              and the thinking behind them.
-            </p>
+      <section className="home-work" aria-labelledby="home-work-title">
+        <div className="home-section-heading">
+          <div>
+            <p className="eyebrow">01 / SELECTED PROJECTS</p>
+            <h2 id="home-work-title">A few things I’ve built.</h2>
           </div>
-        </header>
-        <WorkGallery projects={projects} featured />
-        <Link to="/work" className="all-work">
-          Browse all projects <span>↗</span>
+          <p>Browse by project, or follow the connections between them.</p>
+        </div>
+        <div className="home-project-grid">
+          {featured.map((project) => (
+            <HomeProjectCard project={project} key={project.slug} />
+          ))}
+        </div>
+        <Link to="/work" className="home-atlas-link">
+          Explore all {projects.length} projects in the atlas <Icon name="external" />
         </Link>
       </section>
-      <section className="about-strip">
-        <p className="eyebrow">02 / THE ENGINEER</p>
+      <section className="home-about">
+        <p className="eyebrow">02 / ABOUT</p>
         <div>
-          <h2>A little about me</h2>
-          <p>{profile.biography.split('\n\n')[0]}</p>
-          <Link className="text-link" to="/about">
-            A little more about me ↗
-          </Link>
+          <h2>How I like to work.</h2>
+          <p>{profile.biography.split('\n\n')[1] || profile.biography}</p>
+          <Link to="/about">More about me <Icon name="external" /></Link>
         </div>
       </section>
       {profile.experience && (
-        <section className="experience-highlight">
+        <section className="home-experience">
           <div>
-            <p className="eyebrow">RECENT INDUSTRY PROJECT / SCIENTIFIC SCHOLAR</p>
+            <p className="eyebrow">03 / RECENT INDUSTRY WORK</p>
             <h2>Finance workflows, in one place.</h2>
             <p>{profile.experience}</p>
           </div>
-          <Link className="text-link" to="/about">
-            More about my experience ↗
-          </Link>
+          <Link to="/about">Experience & education <Icon name="external" /></Link>
         </section>
       )}
-      <section className="skills-section">
-        <p className="eyebrow">TOOLS I USE</p>
-        <Tags items={profile.skills} graphic />
+      <section className="home-skills" aria-labelledby="home-skills-title">
+        <div>
+          <p className="eyebrow">04 / TOOLKIT</p>
+          <h2 id="home-skills-title">Tools I work with.</h2>
+        </div>
+        <Tags items={profile.skills} />
       </section>
       <ContributionBoard profile={profile} />
       <section className="contact-band">
-        <p className="eyebrow">03 / NEXT CONVERSATION</p>
+        <p className="eyebrow">05 / NEXT CONVERSATION</p>
         <h2>
           Something worth
           <br />
           building together?
         </h2>
         <Link to="/contact">
-          Let’s talk <span>↗</span>
+          Let’s talk <Icon name="external" />
         </Link>
       </section>
     </>
@@ -273,13 +321,8 @@ function About({ profile }) {
             <Tags items={profile.skills} graphic />
           </section>
           <div className="inline-links">
-            {profile.resumeUrl && (
-              <a href={profile.resumeUrl} download>
-                Download resume ↗
-              </a>
-            )}
-            <External href={profile.github}>GitHub ↗</External>
-            <External href={profile.linkedin}>LinkedIn ↗</External>
+            <External href={profile.github}>GitHub <Icon name="external" /></External>
+            <External href={profile.linkedin}>LinkedIn <Icon name="external" /></External>
           </div>
         </div>
       </div>
@@ -324,9 +367,9 @@ function Contact({ profile }) {
           </p>
           <p>You can reach me through the form or find my work on GitHub.</p>
           <div className="contact-links">
-            {profile.email && <a href={`mailto:${profile.email}`}>{profile.email} ↗</a>}
-            <External href={profile.linkedin}>LinkedIn ↗</External>
-            <External href={profile.github}>GitHub ↗</External>
+            {profile.email && <a href={`mailto:${profile.email}`}>{profile.email} <Icon name="external" /></a>}
+            <External href={profile.linkedin}>LinkedIn <Icon name="external" /></External>
+            <External href={profile.github}>GitHub <Icon name="external" /></External>
           </div>
           <p className="eyebrow">{profile.location}</p>
         </div>
@@ -369,7 +412,7 @@ function Contact({ profile }) {
             />
           </label>
           <button className="button" disabled={busy}>
-            {busy ? 'Sending…' : 'Send message ↗'}
+            {busy ? 'Sending…' : <>Send message <Icon name="external" /></>}
           </button>
           <Feedback error={error} message={message} />
           <p className="form-note">Your details are used only to respond to your message.</p>
@@ -496,7 +539,7 @@ export default function App() {
             element={
               <section className="page">
                 <h1>Page not found.</h1>
-                <Link to="/">Return home ↗</Link>
+                <Link to="/">Return home <Icon name="external" /></Link>
               </section>
             }
           />

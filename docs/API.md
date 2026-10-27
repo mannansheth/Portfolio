@@ -24,7 +24,7 @@ Login is limited to 10 attempts per IP per 15 minutes. Contact is limited to 5 s
 
 ## Protected admin
 
-Every endpoint below requires a valid session. Every mutation also requires `X-CSRF-Token` equal to the session token returned at login. Cross-origin mutations are rejected; credentialed CORS is restricted to `FRONTEND_ORIGIN`.
+Every endpoint below requires a valid session. Every mutation also requires `X-CSRF-Token` equal to the session token returned at login. Cross-origin mutations are rejected; credentialed CORS is restricted to `FRONTEND_ORIGIN` and any explicitly listed `FRONTEND_ORIGINS`.
 
 | Method | Path                          | Responsibility                                                                                                                                                          |
 | ------ | ----------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
@@ -44,6 +44,6 @@ Duplicate slugs and repository keys return 409. Stale edits, stale ordering, and
 
 ## Content shape
 
-Projects contain `title`, `slug`, `tagline`, `overview`, `problem`, `architecture`, `contribution`, `challenges`, `learnings`, string arrays `features` and `technologies`, `coverImage`, `images`, `repositoryUrl`, `demoUrl`, `githubOwner`, `githubRepo`, `status` (`draft` or `published`), `featured`, and `position`. `repositoryPrivate` marks private imports; publishing them requires `privatePublicationApproved: true`. Public responses omit that approval and hide private repository URLs, owners, and names. Existing private classification cannot be removed through an ordinary edit. Optional private review arrays are `missingInformation` and `suggestedSections`. SQL columns are authoritative for publication, ordering and version.
+Projects contain `title`, `slug`, `tagline`, `overview`, `problem`, `architecture`, `contribution`, `challenges`, `learnings`, string arrays `features`, `technologies`, and `connections`, `coverImage`, `images`, `repositoryUrl`, `demoUrl`, `githubOwner`, `githubRepo`, `status` (`draft` or `published`), `featured`, and `position`. `connections` groups projects into paths on the Work atlas; reusing a label joins an existing path, while a new label creates one. A project without a connection remains visible under “Needs a connection.” `repositoryPrivate` marks private imports; publishing them requires `privatePublicationApproved: true`. Public responses omit that approval and hide private repository URLs, owners, and names. Existing private classification cannot be removed through an ordinary edit. Optional private review arrays are `missingInformation` and `suggestedSections`. SQL columns are authoritative for publication, ordering and version.
 
 Profile contains `name`, `introduction`, `interests`, `biography`, `location`, `graduationYear`, `education`, `experience`, `skills`, `github`, `linkedin`, `resumeUrl`, and `email`. URL fields accept HTTP/HTTPS only; empty optional fields are hidden on public pages. Content is rendered as text, without raw HTML or Markdown execution.

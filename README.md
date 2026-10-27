@@ -15,7 +15,9 @@ npm.cmd run admin
 npm.cmd run dev
 ```
 
-If you already created your administrator, skip the first command. Otherwise enter your email and a hidden password of 12+ characters (at most 72 UTF-8 bytes). Then open **http://127.0.0.1:5173** and **http://127.0.0.1:5173/admin**. The API is at `http://127.0.0.1:3001`. Use `127.0.0.1` consistently instead of mixing it with `localhost` because the CORS origin is exact.
+If you already created your administrator, skip the first command. Otherwise enter your email and a hidden password of 12+ characters (at most 72 UTF-8 bytes). Then open **http://127.0.0.1:5175** and **http://127.0.0.1:5175/admin**. The API is at `http://127.0.0.1:3001`. Use `127.0.0.1` consistently instead of mixing it with `localhost` because the CORS origin is exact.
+
+The Vite dev server listens on the local network at port `5175`. To open it from a phone on the same Wi-Fi, use the computer's current IPv4 address shown by `ipconfig` (for example, `http://<IPv4-address>:5175`). If needed, add that URL to the comma-separated `FRONTEND_ORIGINS` value in the ignored `backend/.env`, then restart the dev command. Keep the phone and computer on the same non-isolated Wi-Fi network.
 
 ## Reproducible setup on another device
 

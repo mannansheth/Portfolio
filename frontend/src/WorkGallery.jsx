@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from 'react';
 import { Link } from 'react-router-dom';
-import { External, Tags } from './components.jsx';
+import { External, Tags, Icon } from './components.jsx';
 
 const identities = {
   curatus: { category: 'Wellbeing / web application' },
@@ -42,7 +42,7 @@ function ProjectCover({ project, identity }) {
         </div>
       )}
       <span className="folio-preview" aria-hidden="true">
-        Open project notes <span>↗</span>
+        Open project notes <Icon name="external" />
       </span>
     </Link>
   );
@@ -223,16 +223,16 @@ export default function WorkGallery({ projects, featured = false }) {
                   </div>
                   <nav className="folio-actions" aria-label={`${project.title} links`}>
                     <Link className="folio-primary" to={`/work/${project.slug}`}>
-                      Project notes <span aria-hidden="true">↗</span>
+                      Project notes <Icon name="external" />
                     </Link>
                     {project.demoUrl && (
                       <External href={project.demoUrl}>
-                        Live demo <span aria-hidden="true">↗</span>
+                        Live demo <Icon name="external" />
                       </External>
                     )}
                     {project.repositoryUrl && (
                       <External href={project.repositoryUrl}>
-                        GitHub <span aria-hidden="true">↗</span>
+                        GitHub <Icon name="external" />
                       </External>
                     )}
                   </nav>

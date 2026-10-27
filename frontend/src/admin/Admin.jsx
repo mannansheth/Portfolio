@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { api, setCsrf } from '../api.js';
-import { Field, Feedback } from '../components.jsx';
+import { Field, Feedback, Icon } from '../components.jsx';
 import ProjectEditor, { emptyProject } from './ProjectEditor.jsx';
 import Importer from './Importer.jsx';
 import ProfileEditor from './ProfileEditor.jsx';
@@ -162,7 +162,7 @@ export default function Admin({ onProfileChange }) {
           <ThemeToggle />
         </div>
         <Link className="wordmark" to="/">
-          Mannan Sheth <span className="mark">↗</span>
+          Mannan Sheth <span className="mark"><Icon name="external" /></span>
         </Link>
         <div className="login-panel">
           <p className="eyebrow">THE EDITOR’S DESK</p>
@@ -186,7 +186,7 @@ export default function Admin({ onProfileChange }) {
               required
             />
             <button className="button" disabled={busy}>
-              {busy ? 'Signing in…' : 'Sign in ↗'}
+              {busy ? 'Signing in…' : <>Sign in <Icon name="external" /></>}
             </button>
             <Feedback error={error} />
           </form>
@@ -194,7 +194,7 @@ export default function Admin({ onProfileChange }) {
             First visit? Create an administrator with the setup command in the README.
           </p>
         </div>
-        <Link to="/">← Return to portfolio</Link>
+        <Link to="/"><Icon name="left" /> Return to portfolio</Link>
       </main>
     );
   const published = projects.filter((p) => p.status === 'published').length;
@@ -205,7 +205,7 @@ export default function Admin({ onProfileChange }) {
       </a>
       <aside className="admin-sidebar">
         <Link className="wordmark" to="/">
-          Mannan Sheth<span className="mark">↗</span>
+          Mannan Sheth<span className="mark"><Icon name="external" /></span>
         </Link>
         <p className="eyebrow">THE EDITOR’S DESK</p>
         <ThemeToggle />
@@ -223,17 +223,17 @@ export default function Admin({ onProfileChange }) {
               onClick={() => navigate(key)}
             >
               {label}
-              <span aria-hidden="true">↗</span>
+              <Icon name="external" />
             </button>
           ))}
         </nav>
         <div className="admin-account">
           <small>{session.email}</small>
           <button disabled={busy} onClick={logout}>
-            Sign out ↗
+            Sign out <Icon name="external" />
           </button>
           <Link to="/" target="_blank">
-            View portfolio ↗
+            View portfolio <Icon name="external" />
           </Link>
         </div>
       </aside>
@@ -272,7 +272,7 @@ export default function Admin({ onProfileChange }) {
                 disabled={projectsLoading}
                 onClick={() => setEditor({ ...emptyProject, position: projects.length })}
               >
-                New project +
+                New project <Icon name="plus" />
               </button>
             </div>
             {view === 'dashboard' && (
@@ -300,12 +300,12 @@ export default function Admin({ onProfileChange }) {
                 <div className="dashboard-shortcuts">
                   <button onClick={() => navigate('import')}>
                     <span>01 / SOURCE</span>
-                    <strong>Bring in a repository ↗</strong>
+                    <strong>Bring in a repository <Icon name="external" /></strong>
                     <p>Inspect public code and build an editable draft.</p>
                   </button>
                   <button onClick={() => navigate('profile')}>
                     <span>02 / CONTEXT</span>
-                    <strong>Update your profile ↗</strong>
+                    <strong>Update your profile <Icon name="external" /></strong>
                     <p>Add your contact details, resume, and personal context.</p>
                   </button>
                 </div>
@@ -337,7 +337,7 @@ export default function Admin({ onProfileChange }) {
                       disabled={busy || i === 0}
                       onClick={() => reorder(i, -1)}
                     >
-                      ↑
+                      <Icon name="up" />
                     </button>
                     <span>{String(i + 1).padStart(2, '0')}</span>
                     <button
@@ -345,7 +345,7 @@ export default function Admin({ onProfileChange }) {
                       disabled={busy || i === projects.length - 1}
                       onClick={() => reorder(i, 1)}
                     >
-                      ↓
+                      <Icon name="down" />
                     </button>
                   </div>
                   <div className="admin-project-name">
@@ -359,7 +359,7 @@ export default function Admin({ onProfileChange }) {
                     aria-pressed={p.featured}
                     onClick={() => toggle(p, 'featured')}
                   >
-                    {p.featured ? '★ Featured' : '☆ Feature'}
+                    <><Icon name="star" /> {p.featured ? 'Featured' : 'Feature'}</>
                   </button>
                   <div className="actions">
                     <button onClick={() => setEditor(p)}>Edit</button>

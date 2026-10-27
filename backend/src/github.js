@@ -35,19 +35,23 @@ export function sanitizeSource(text) {
     .join('\n')
     .replace(/-----BEGIN[\s\S]*?-----END[^\n]+/g, '[REDACTED KEY]')
     .replace(
-      /(?:gh[pousr]_[A-Za-z0-9_]{20,}|github_pat_[A-Za-z0-9_]+|sk-[A-Za-z0-9_-]{16,}|AKIA[A-Z0-9]{16})/g,
+      /(?:gh[pousr]_[A-Za-z0-9_]{20,}|github_pat_[A-Za-z0-9_]+|sk-[A-Za-z0-9_-]{16,}|(?:sk|rk)_(?:live|test)_[A-Za-z0-9]{16,}|AIza[0-9A-Za-z_-]{30,}|AKIA[A-Z0-9]{16})/g,
       '[REDACTED]',
     )
     .replace(/\beyJ[A-Za-z0-9_-]+\.[A-Za-z0-9_-]+\.[A-Za-z0-9_-]+\b/g, '[REDACTED TOKEN]')
     .replace(/(["'`])[A-Za-z0-9_+/=-]{32,}\1/g, '"[REDACTED VALUE]"')
     .replace(/https?:\/\/[^\s/]+:[^\s@]+@/g, 'https://[REDACTED]@')
-    .slice(0, 10000);
+    .slice(0, 12000);
 }
 export function safeFile(path) {
   return (
-    !/(^|\/)(?:\.|node_modules|vendor|dist|build|coverage|__pycache__|config)(\/|$)|credentials|secrets|(?:lock|\.min\.js$|\.map$)|\.env|google-services|firebase.*json|(?:^|\/)\.[^/]+/i.test(
+    !/(^|\/)(?:\.|node_modules|vendor|dist|build|coverage|__pycache__|config|static|assets|public)(\/|$)|credentials|secrets|(?:lock|\.min\.[^/]+$|\.map$)|\.env|google-services|firebase.*json|(?:^|\/)\.[^/]+/i.test(
       path,
-    ) && /\.(?:md|js|jsx|py|cs|csproj|sql|json|txt)$/i.test(path)
+    ) &&
+    (/\.(?:md|mdx|txt|js|jsx|mjs|cjs|ts|tsx|py|dart|java|kt|go|rs|cs|csproj|sql|json|html|css|scss|vue|svelte|php|rb|xml|ya?ml|toml|sh)$/i.test(
+      path,
+    ) ||
+      /(^|\/)(?:Dockerfile|Makefile|Gemfile|Pipfile)$/i.test(path))
   );
 }
 async function github(path) {
@@ -128,10 +132,7 @@ export async function discover(owner = 'mannansheth', source = 'public') {
 export async function contributions(owner = 'mannansheth') {
   if (!identifier.test(owner)) throw new HttpError(400, 'Invalid GitHub username.');
   if (!process.env.GITHUB_TOKEN)
-    throw new HttpError(
-      503,
-      'Contribution data needs a read-only GITHUB_TOKEN in backend/.env.',
-    );
+    throw new HttpError(503, 'Contribution data needs a read-only GITHUB_TOKEN in backend/.env.');
 
   const to = new Date();
   const from = new Date(to);
@@ -189,7 +190,7 @@ export async function inspect(url) {
     try {
       return await github(path);
     } catch (e) {
-      warnings.push(e.message);
+      warnings.push(`${path}: ${e.message}`);
       return fallback;
     }
   };
@@ -203,16 +204,73 @@ export async function inspect(url) {
   const paths = (tree.tree || []).filter(
     (f) => f.type === 'blob' && safeFile(f.path) && f.size <= 25000,
   );
-  const priority = (path) =>
-    /readme/i.test(path)
-      ? 0
-      : /package.json|requirements.txt|\.csproj/i.test(path)
-        ? 1
-        : /routes|models|schema|server|app\./i.test(path)
-          ? 2
-          : 3;
-  const selected = paths.sort((a, b) => priority(a.path) - priority(b.path)).slice(0, 8),
-    files = [];
+  const rootReadmes = paths.filter((f) => !f.path.includes('/') && /^readme(?:\.|$)/i.test(f.path));
+  const docs = paths
+    .filter(
+      (f) =>
+        (/^readme(?:\.|$)/i.test(f.path) && f.path.includes('/')) ||
+        (/(^|\/)(docs?|documentation)(\/|$)/i.test(f.path) && /\.(?:md|mdx|txt)$/i.test(f.path)),
+    )
+    .sort((a, b) => {
+      const rank = (path) => {
+        if (/architecture|system-overview|design|component-map/i.test(path)) return 0;
+        if (/pipeline|implementation|technical-deep-dive|source-map/i.test(path)) return 1;
+        if (/features?|user-guide|getting.?started|tutorial|usage/i.test(path)) return 2;
+        if (/api|deployment|security|database|schema|validation/i.test(path)) return 3;
+        if (/(^|\/)readme(?:\.|$)/i.test(path)) return 4;
+        return 5;
+      };
+      return rank(a.path) - rank(b.path) || a.path.localeCompare(b.path);
+    });
+  const primaryPathRank = (path) =>
+    /(^|\/)(?:examples?|fixtures?|samples?|sdks?)(\/|$)/i.test(path)
+      ? 8
+      : /(^|\/)(?:src|lib|backend|frontend|server|client|flutter)(\/|$)/i.test(path)
+        ? 0
+        : 3;
+  const byPrimaryPath = (a, b) =>
+    primaryPathRank(a.path) - primaryPathRank(b.path) || a.path.localeCompare(b.path);
+  const manifests = paths
+    .filter((f) =>
+      /(^|\/)(?:package\.json|requirements\.txt|pyproject\.toml|pubspec\.ya?ml|[^/]+\.csproj|pom\.xml|build\.gradle|Cargo\.toml|go\.mod)$/i.test(
+        f.path,
+      ),
+    )
+    .sort(byPrimaryPath);
+  const architecture = paths
+    .filter(
+      (f) =>
+        /routes?|controllers?|models?|schema|database|migrations?|server|api\.|services?\//i.test(
+          f.path,
+        ) &&
+        !/(^|\/)(test|tests|spec|specs|examples?|fixtures?|samples?|sdks?)(\/|\.|$)/i.test(f.path),
+    )
+    .sort(byPrimaryPath);
+  const tests = paths
+    .filter((f) => /(^|\/)(test|tests|spec|specs)(\/|\.|$)/i.test(f.path))
+    .sort(byPrimaryPath);
+  const source = paths
+    .filter(
+      (f) =>
+        /\.(?:js|jsx|mjs|cjs|ts|tsx|py|dart|java|kt|go|rs|cs|html|css|scss|vue|svelte|php|rb)$/i.test(
+          f.path,
+        ) && !/(^|\/)(docs?|documentation)(\/|$)/i.test(f.path),
+    )
+    .sort(byPrimaryPath);
+  const groups = [
+    rootReadmes.slice(0, 1),
+    docs.slice(0, 5),
+    manifests.slice(0, 3),
+    architecture.slice(0, 5),
+    tests.slice(0, 2),
+    source.slice(0, 10),
+  ];
+  const selected = [];
+  for (let index = 0; index < 10; index++)
+    for (const group of groups)
+      if (group[index] && !selected.some((file) => file.path === group[index].path))
+        selected.push(group[index]);
+  const files = [];
   if (readme?.content && readme.size <= 25000)
     files.push({
       path: readme.path,
@@ -232,16 +290,21 @@ export async function inspect(url) {
         text: sanitizeSource(Buffer.from(data.content, 'base64').toString('utf8')),
       });
   }
-  let remaining = 45000;
+  let remaining = 80000;
+  let truncatedEvidence = false;
   for (const f of files) {
+    if (f.text.length > remaining) truncatedEvidence = true;
     f.text = f.text.slice(0, remaining);
     remaining -= f.text.length;
   }
+  if (truncatedEvidence)
+    warnings.push('Inspected source exceeded the 80 KB model-context budget and was truncated.');
   return {
     owner,
     repo,
     private: Boolean(meta.private),
     url: meta.html_url,
+    defaultBranch: meta.default_branch,
     description: sanitizeSource(meta.description || ''),
     homepage: /^https?:\/\//i.test(meta.homepage || '') ? meta.homepage : '',
     languages: Object.keys(languages),
@@ -249,6 +312,11 @@ export async function inspect(url) {
     files: files.filter((f) => f.text),
     warnings,
     treeTruncated: !!tree.truncated,
+    coverage: {
+      candidateFiles: paths.length,
+      inspectedFiles: files.filter((f) => f.text).length,
+      inspectedPaths: files.filter((f) => f.text).map((f) => f.path),
+    },
     inspectedAt: new Date().toISOString(),
   };
 }

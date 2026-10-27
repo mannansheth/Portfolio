@@ -26,14 +26,20 @@ app.use(
     },
   }),
 );
-app.use(cors({ origin: config.origin, credentials: true }));
+app.use(
+  cors({
+    origin: (origin, callback) =>
+      callback(null, config.frontendOrigins.includes(origin) ? origin : false),
+    credentials: true,
+  }),
+);
 app.use(express.json({ limit: '180kb' }));
 app.use('/api', (req, res, next) => {
   res.set('Cache-Control', 'no-store');
   if (
     !['GET', 'HEAD', 'OPTIONS'].includes(req.method) &&
     req.headers.origin &&
-    req.headers.origin !== config.origin
+    !config.frontendOrigins.includes(req.headers.origin)
   )
     return next(new HttpError(403, 'Request origin is not allowed.'));
   next();
@@ -58,7 +64,11 @@ app.get('/api/profile', async (req, res) => {
 });
 app.get('/api/projects', async (req, res) => res.json({ data: await listProjects(true) }));
 app.get('/api/github/contributions', limited(20, 60000), async (req, res) => {
-  const username = z.string().regex(/^[a-zA-Z0-9][a-zA-Z0-9_.-]{0,99}$/).default('mannansheth').parse(req.query.username);
+  const username = z
+    .string()
+    .regex(/^[a-zA-Z0-9][a-zA-Z0-9_.-]{0,99}$/)
+    .default('mannansheth')
+    .parse(req.query.username);
   res.json({ data: await contributions(username) });
 });
 app.get('/api/projects/:slug', async (req, res) => {
@@ -242,6 +252,11 @@ app.post('/api/admin/github/generate', limited(5, 60000), async (req, res) => {
     throw new HttpError(
       400,
       'This repository is private. Review the selected evidence and explicitly allow sending it to Gemini before generating a draft.',
+    );
+  if (!evidence.files.length)
+    throw new HttpError(
+      422,
+      'No safe documentation or source files were available to analyze. Use repository metadata and add project details manually.',
     );
   res.json({ data: await generateDraft(evidence) });
 });

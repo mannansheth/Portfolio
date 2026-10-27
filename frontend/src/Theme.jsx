@@ -1,4 +1,5 @@
 import { createContext, useContext, useEffect, useState } from 'react';
+import { Icon } from './Icon.jsx';
 const ThemeContext = createContext(null);
 export function ThemeProvider({ children }) {
   const [theme, setTheme] = useState(() => document.documentElement.dataset.theme || 'light');
@@ -51,7 +52,7 @@ export function ThemeToggle() {
       aria-label={`Switch to ${theme === 'dark' ? 'light' : 'dark'} mode`}
       aria-pressed={theme === 'dark'}
     >
-      <span aria-hidden="true">{theme === 'dark' ? '☀' : '◐'}</span>
+      <Icon name={theme === 'dark' ? 'sun' : 'moon'} />
       <span>{theme === 'dark' ? 'Light' : 'Dark'}</span>
     </button>
   );

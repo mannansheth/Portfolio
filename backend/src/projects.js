@@ -2,6 +2,12 @@ import { query } from './db.js';
 import { HttpError, projectSchema } from './validation.js';
 import { parseRepository } from './github.js';
 export const json = (value) => (typeof value === 'string' ? JSON.parse(value) : value);
+const absenceOfResults =
+  /\b(?:no|not|none)\b.{0,50}\b(?:measured\s+)?(?:results?|outcomes?|metrics?|benchmarks?)\b|\b(?:repository|source|documentation|evidence)\b.{0,100}\b(?:does not|doesn't|did not|didn't|contains no|provides no|provided no|includes no|lacks)\b.{0,60}\b(?:results?|outcomes?|metrics?|benchmarks?)\b/i;
+export function cleanOutcomeCopy(value) {
+  const outcome = typeof value === 'string' ? value.trim() : '';
+  return absenceOfResults.test(outcome) ? '' : outcome;
+}
 export function projectRow(row) {
   return {
     ...json(row.data),
@@ -15,11 +21,20 @@ export function projectRow(row) {
   };
 }
 export function publicProject(project) {
-  const { missingInformation, suggestedSections, privatePublicationApproved, ...publicFields } =
-    project;
+  const {
+    missingInformation,
+    suggestedSections,
+    privatePublicationApproved,
+    sourcePaths,
+    sourceWarnings,
+    treeTruncated,
+    claimEvidence,
+    ...publicFields
+  } = project;
+  const visitorFields = { ...publicFields, outcomes: cleanOutcomeCopy(publicFields.outcomes) };
   return project.repositoryPrivate
-    ? { ...publicFields, repositoryUrl: '', githubOwner: '', githubRepo: '' }
-    : publicFields;
+    ? { ...visitorFields, repositoryUrl: '', githubOwner: '', githubRepo: '' }
+    : visitorFields;
 }
 export async function listProjects(publicOnly = false) {
   return (

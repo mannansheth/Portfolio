@@ -25,6 +25,25 @@ const payload = {
   featured: true,
   position: 0,
 };
+const validDraft = (title, sourcePath = 'README.md') => ({
+  title,
+  tagline: '',
+  overview: 'A source-supported project summary.',
+  problem: '',
+  outcomes: '',
+  architecture: '',
+  challenges: '',
+  learnings: '',
+  features: ['Project route'],
+  technologies: [],
+  connections: [],
+  suggestedSections: [],
+  missingInformation: [],
+  claimEvidence: [
+    { section: 'overview', claim: 'A source-supported project summary.', sources: [sourcePath] },
+    { section: 'features', claim: 'Project route', sources: [sourcePath] },
+  ],
+});
 const admin = (method, path, body) => {
   let r = request(app)[method](path).set('Cookie', cookie).set('X-CSRF-Token', csrf);
   return body ? r.send(body) : r;
@@ -285,7 +304,7 @@ test('Gemini structured output validation and provider errors (mocked network)',
     owner: 'example',
     url: payload.repositoryUrl,
     homepage: '',
-    files: [],
+    files: [{ path: 'README.md', text: 'Project summary.' }],
   };
   try {
     let requestBody;
@@ -299,11 +318,7 @@ test('Gemini structured output validation and provider errors (mocked network)',
               content: {
                 parts: [
                   {
-                    text: JSON.stringify({
-                      title: 'Example',
-                      overview: 'Supported description.',
-                      features: ['A source-supported feature'],
-                    }),
+                    text: JSON.stringify(validDraft('Example')),
                   },
                 ],
               },
@@ -315,6 +330,8 @@ test('Gemini structured output validation and provider errors (mocked network)',
     const draft = await generateDraft(evidence);
     assert.equal(draft.status, 'draft');
     assert.equal(draft.title, 'Example');
+    assert.equal(draft.claimEvidence[0].sources[0], 'README.md');
+    assert.ok(draft.missingInformation.some((item) => item.includes('individual role')));
     assert.equal(requestBody.generationConfig.responseMimeType, 'application/json');
     globalThis.fetch = async () =>
       new Response(
@@ -332,6 +349,49 @@ test('Gemini structured output validation and provider errors (mocked network)',
       generateDraft(evidence),
       (error) => error.status === 429 && /quota/.test(error.message),
     );
+  } finally {
+    globalThis.fetch = original;
+    if (key) process.env.GEMINI_API_KEY = key;
+    else delete process.env.GEMINI_API_KEY;
+  }
+});
+test('Gemini filtering removes development tasks from recruiter-facing features', async () => {
+  const original = globalThis.fetch,
+    key = process.env.GEMINI_API_KEY;
+  process.env.GEMINI_API_KEY = 'test-placeholder';
+  const draft = {
+    ...validDraft('Feature filtering'),
+    features: ['npm run test in watch mode', 'A meaningful project route'],
+    claimEvidence: [
+      ...validDraft('Feature filtering').claimEvidence,
+      {
+        section: 'features',
+        claim: 'npm run test in watch mode',
+        sources: ['README.md'],
+      },
+      {
+        section: 'features',
+        claim: 'A meaningful project route',
+        sources: ['README.md'],
+      },
+    ],
+  };
+  globalThis.fetch = async () =>
+    new Response(
+      JSON.stringify({
+        candidates: [{ content: { parts: [{ text: JSON.stringify(draft) }] } }],
+      }),
+    );
+  try {
+    const result = await generateDraft({
+      repo: 'FeatureFiltering',
+      owner: 'example',
+      url: 'https://github.com/example/feature-filtering',
+      files: [{ path: 'README.md', text: 'Project notes.' }],
+    });
+    assert.deepEqual(result.features, ['A meaningful project route']);
+    assert.equal(result.claimEvidence.filter((item) => item.section === 'features').length, 1);
+    assert.ok(result.missingInformation.some((item) => /development-tool details/.test(item)));
   } finally {
     globalThis.fetch = original;
     if (key) process.env.GEMINI_API_KEY = key;
@@ -356,11 +416,7 @@ test('private GitHub discovery, inspection, Gemini consent, and publication priv
               content: {
                 parts: [
                   {
-                    text: JSON.stringify({
-                      title: 'Reviewed private project',
-                      overview: 'A source-supported project summary.',
-                      features: ['Project route'],
-                    }),
+                    text: JSON.stringify(validDraft('Reviewed private project', 'server.js')),
                   },
                 ],
               },
@@ -426,6 +482,7 @@ test('private GitHub discovery, inspection, Gemini consent, and publication priv
     assert.equal(generated.status, 200);
     assert.equal(generated.body.data.repositoryPrivate, true);
     assert.equal(generated.body.data.status, 'draft');
+    assert.deepEqual(generated.body.data.sourcePaths, ['server.js']);
     let saved = (await admin('post', '/api/admin/projects', generated.body.data)).body.data;
     assert.equal((await request(app).get(`/api/projects/${saved.slug}`)).status, 404);
     assert.equal(
@@ -445,6 +502,8 @@ test('private GitHub discovery, inspection, Gemini consent, and publication priv
     assert.equal(publicData.githubRepo, '');
     assert.equal(publicData.githubOwner, '');
     assert.equal('privatePublicationApproved' in publicData, false);
+    assert.equal('claimEvidence' in publicData, false);
+    assert.equal('sourcePaths' in publicData, false);
     saved = (
       await admin('put', `/api/admin/projects/${saved.id}`, {
         ...saved,

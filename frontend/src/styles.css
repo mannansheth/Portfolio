@@ -118,7 +118,12 @@ main > section,
 }
 .mark {
   color: var(--accent);
-  font-size: 25px;
+  display: inline-flex;
+  align-items: center;
+}
+.mark .ui-icon {
+  width: 16px;
+  height: 16px;
 }
 .site-header nav {
   display: flex;

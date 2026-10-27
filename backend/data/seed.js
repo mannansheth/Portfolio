@@ -43,6 +43,7 @@ const base = {
   learnings: '',
   coverImage: '',
   images: [],
+  connections: [],
   demoUrl: '',
   status: 'draft',
   featured: false,
@@ -62,6 +63,7 @@ export const projects = [
     architecture:
       'A React client communicates with an Express API backed by MySQL. Backend routes cover authentication, journaling, community, therapist profiles, and appointments. Authenticated Socket.IO supports appointment messaging, and a Flask service provides sentiment analysis.',
     technologies: ['React', 'Node.js', 'Express', 'MySQL', 'Flask', 'Socket.IO'],
+    connections: ['Useful workflows'],
     features: [
       'Journal entries and mood-tracking screens',
       'Therapist directory and appointment booking flow',
@@ -84,6 +86,7 @@ export const projects = [
     architecture:
       'A React interface manages graph and playback state, then draws nodes, weighted edges, and algorithm states on a canvas. Dijkstra and Bellman–Ford runs feed play, pause, and reset controls.',
     technologies: ['React', 'JavaScript', 'HTML Canvas'],
+    connections: ['Interaction & feedback'],
     features: [
       'Create and drag graph nodes',
       'Connect nodes with weighted edges',
@@ -108,6 +111,7 @@ export const projects = [
     architecture:
       'An OpenKBP-Opt loader builds dose-influence matrices and fits baseline fluence. The warm-start environment applies bounded beam-weight actions as anatomy drifts over 30 fractions and five decision points. Classical and quantum PPO share rollout, training, and evaluation utilities; sweep scripts compare correction bounds.',
     technologies: ['Python', 'TensorFlow', 'PennyLane', 'NumPy', 'SciPy'],
+    connections: ['Learning under constraints'],
     features: [
       'Simulated 30-fraction course with five decision points',
       'Bounded beam-weight actions starting from a fitted baseline plan',
@@ -135,6 +139,7 @@ export const projects = [
     architecture:
       'The Flutter app handles camera input, report details, maps, and multilingual screens. An Express API exposes user, report, and community routes backed by MySQL. Maps, push notifications, media delivery, transcription, and Gemini analysis are separate integrations.',
     technologies: ['Flutter', 'Dart', 'Node.js', 'Express', 'MySQL'],
+    connections: ['Useful workflows'],
     features: [
       'Camera-based issue reports with photo evidence',
       'Map browsing and report-status views',
@@ -159,6 +164,7 @@ export const projects = [
     challenges:
       'Handling both physical and on-screen input while keeping valid guesses, tile feedback, and keyboard state in sync.',
     technologies: ['JavaScript', 'React', 'HTML', 'CSS'],
+    connections: ['Interaction & feedback'],
     features: [
       'Six-row guessing board with letter-state feedback',
       'Physical keyboard and clickable on-screen keyboard',
@@ -192,6 +198,7 @@ export const projects = [
       'Coqui TTS',
       'MoviePy',
     ],
+    connections: ['Useful workflows', 'Learning under constraints'],
     features: [
       'Recipe browsing and filtering components',
       'Personal recipes and generated recipe collections',

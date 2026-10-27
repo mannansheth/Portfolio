@@ -87,6 +87,14 @@ button:hover {
   order: 2;
   margin-left: auto;
 }
+.ui-icon {
+  display: inline-block;
+  width: 1em;
+  height: 1em;
+  flex: 0 0 auto;
+  vertical-align: -0.14em;
+}
+
 .theme-toggle {
   min-height: 38px;
   display: inline-flex;
@@ -100,9 +108,9 @@ button:hover {
   font-size: 12px;
   white-space: nowrap;
 }
-.theme-toggle span:first-child {
-  font-size: 15px;
-  line-height: 1;
+.theme-toggle > .ui-icon {
+  width: 15px;
+  height: 15px;
 }
 .theme-toggle:hover {
   border-color: var(--accent);
@@ -234,8 +242,12 @@ button:hover {
   border-color: var(--accent);
 }
 .tags .tech-chip img {
+  box-sizing: content-box;
   width: 19px;
   height: 19px;
+  padding: 2px;
+  border-radius: 4px;
+  background: #f4f3ef;
   object-fit: contain;
   filter: none;
   flex: 0 0 auto;
