@@ -1,0 +1,16 @@
+# Initial content evidence
+
+Reviewed on 2026-10-27 against the public repositories and the currently published portfolio records. Summaries are editorial copy grounded in repository documentation and implementation evidence, not unreviewed Gemini output. Setup only inserts missing repository records and never overwrites existing edits.
+
+The profile's name, degree, interests, skills, and graduation year come from the supplied brief. The profile contains its GitHub and LinkedIn links and Mumbai location. Email, resume, employment, achievements, and project team roles remain blank or unverified. Pathfinder and Wordle use existing application captures; the other gallery covers are typographic treatments, not product screenshots.
+
+| Project | Public source | Evidence used |
+| --- | --- | --- |
+| Curatus | https://github.com/mannansheth/Curatus | `README.md`, `backend/package.json`, `backend/server.js`, routes for auth, journal, community, therapist, appointment, chatbot; `backend-py/requirements.txt`; frontend page structure; sentiment helper path |
+| Pathfinder | https://github.com/mannansheth/pathfinder | The live demo and UI capture show a weighted graph editor with selected endpoints. The current GitHub tree exposes a Create React App entry point and published build; keep implementation-specific claims limited to behavior visible in the demo unless the source is restored. |
+| AdaptQ | https://github.com/mannansheth/AdaptQ | `adaptq/README.md`, data loader, correction environment, classical and quantum PPO filenames, common evaluation utilities, sweep scripts. README explicitly states simulated drift, fitted baseline fluence and noiseless simulation. No clinical effectiveness or benchmark superiority is claimed. |
+| Reportr | https://github.com/mannansheth/sih2025-Reportr | Current README identifies Flutter as the mobile client and Node.js/Express/MySQL as the backend. README and source tree document report capture, maps, community and resolution workflows, verification services, multilingual UI, and PDFs. Optional maps, notification, media, transcription, and Gemini integrations require configuration. |
+| RecipeVerse | https://github.com/mannansheth/recipeVerse | React client routes/components cover recipe discovery, filters, recipe details, nutrition, user collections, and generation. The server uses Express/MySQL, with a separate Python/Flask generation service. The repository also contains unrelated FruitNinja assets; these are excluded from the portfolio summary. |
+| Wordle Clone | https://github.com/mannansheth/wordle | `src/Wordle.js`, `src/Row.js`, `src/Keyboard.js`, and `src/Key.js` implement the board, guesses, keyboard input, and feedback. The OpenAI SDK appears in package dependencies but is not described as a project feature because no usage was verified. |
+
+Public source inspection establishes implementation presence, not operating deployments, scientific validity, or adoption. No benchmark outcomes or clinical efficacy are claimed for AdaptQ. Repository contributor metadata is not used as a substitute for an author-supplied description of team roles. External deployments are linked only where already configured; check their current availability before sharing. Other repositories remain available for manual review in GitHub discovery and are not automatically added to the portfolio.

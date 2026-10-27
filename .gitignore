@@ -1,0 +1,13 @@
+node_modules/
+frontend/dist/
+/.env
+backend/.env
+**/.env
+**/.env.*
+!**/.env.example
+.research/
+.local/
+test-results/
+playwright-report/
+backend/data/*.research.json
+*.log

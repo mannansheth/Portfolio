@@ -1,0 +1,16 @@
+/* Shared dark theme tokens. Component layout lives in styles.css. */
+:root[data-theme='dark'] {
+  --paper: #111312;
+  --ink: #eae7e0;
+  --muted: #a5a79f;
+  --line: #363a35;
+  --accent: #d58b68;
+  --white: #202220;
+  --surface: #202220;
+  --surface-raised: #171917;
+  --band-bg: #171917;
+  --band-text: #eae7e0;
+  --shadow: rgb(0 0 0 / 0.35);
+  --focus: #d58b68;
+  color-scheme: dark;
+}

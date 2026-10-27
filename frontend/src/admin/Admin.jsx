@@ -1,0 +1,384 @@
+import { useEffect, useState } from 'react';
+import { Link } from 'react-router-dom';
+import { api, setCsrf } from '../api.js';
+import { Field, Feedback } from '../components.jsx';
+import ProjectEditor, { emptyProject } from './ProjectEditor.jsx';
+import Importer from './Importer.jsx';
+import ProfileEditor from './ProfileEditor.jsx';
+import Messages from './Messages.jsx';
+import { ThemeToggle } from '../Theme.jsx';
+export default function Admin({ onProfileChange }) {
+  const [session, setSession] = useState(null),
+    [checking, setChecking] = useState(true),
+    [view, setView] = useState('dashboard'),
+    [projects, setProjects] = useState([]),
+    [projectsLoading, setProjectsLoading] = useState(true),
+    [editor, setEditor] = useState(null),
+    [email, setEmail] = useState(''),
+    [password, setPassword] = useState(''),
+    [busy, setBusy] = useState(false),
+    [error, setError] = useState(''),
+    [message, setMessage] = useState(''),
+    [remove, setRemove] = useState(null);
+  useEffect(() => {
+    api('/auth/session')
+      .then((s) => {
+        setCsrf(s.csrfToken);
+        setSession(s);
+      })
+      .catch((e) => {
+        if (e.status !== 401) setError(e.message);
+      })
+      .finally(() => setChecking(false));
+  }, []);
+  async function loadProjects() {
+    setProjectsLoading(true);
+    try {
+      setProjects(await api('/admin/projects'));
+    } catch (e) {
+      setError(e.message);
+      if (e.status === 401) {
+        setSession(null);
+        setCsrf('');
+      }
+    } finally {
+      setProjectsLoading(false);
+    }
+  }
+  useEffect(() => {
+    if (session) loadProjects();
+  }, [session]);
+  async function login(e) {
+    e.preventDefault();
+    setBusy(true);
+    setError('');
+    try {
+      const s = await api('/auth/login', {
+        method: 'POST',
+        body: { email, password },
+      });
+      setCsrf(s.csrfToken);
+      setSession(s);
+      setPassword('');
+    } catch (e) {
+      setError(e.message);
+    } finally {
+      setBusy(false);
+    }
+  }
+  async function logout() {
+    setBusy(true);
+    setError('');
+    try {
+      await api('/auth/logout', { method: 'POST', body: {} });
+      setSession(null);
+      setCsrf('');
+      setEditor(null);
+    } catch (e) {
+      setError(e.message);
+    } finally {
+      setBusy(false);
+    }
+  }
+  function navigate(next) {
+    setEditor(null);
+    setView(next);
+    setError('');
+    setMessage('');
+    setRemove(null);
+  }
+  async function reorder(index, direction) {
+    const next = [...projects],
+      other = index + direction;
+    [next[index], next[other]] = [next[other], next[index]];
+    setBusy(true);
+    setError('');
+    try {
+      setProjects(
+        await api('/admin/reorder', {
+          method: 'POST',
+          body: { items: next.map((p) => ({ id: p.id, version: p.version })) },
+        }),
+      );
+      setMessage('Project order saved.');
+    } catch (e) {
+      setError(e.message);
+      await loadProjects();
+    } finally {
+      setBusy(false);
+    }
+  }
+  async function toggle(p, key) {
+    if (
+      key === 'status' &&
+      p.status === 'draft' &&
+      p.repositoryPrivate &&
+      !p.privatePublicationApproved
+    ) {
+      setEditor(p);
+      setMessage('Review and approve publishing this private project in the editor.');
+      return;
+    }
+    setBusy(true);
+    setError('');
+    try {
+      await api(`/admin/projects/${p.id}`, {
+        method: 'PUT',
+        body: {
+          ...p,
+          [key]: key === 'status' ? (p.status === 'draft' ? 'published' : 'draft') : !p.featured,
+        },
+      });
+      await loadProjects();
+      setMessage('Project updated.');
+    } catch (e) {
+      setError(e.message);
+    } finally {
+      setBusy(false);
+    }
+  }
+  async function deleteProject() {
+    setBusy(true);
+    setError('');
+    try {
+      await api(`/admin/projects/${remove.id}`, {
+        method: 'DELETE',
+        body: { version: remove.version },
+      });
+      setRemove(null);
+      await loadProjects();
+      setMessage('Project deleted.');
+    } catch (e) {
+      setError(e.message);
+    } finally {
+      setBusy(false);
+    }
+  }
+  if (checking) return <main className="loading">Checking your session…</main>;
+  if (!session)
+    return (
+      <main className="login-page">
+        <div className="login-theme">
+          <ThemeToggle />
+        </div>
+        <Link className="wordmark" to="/">
+          Mannan Sheth <span className="mark">↗</span>
+        </Link>
+        <div className="login-panel">
+          <p className="eyebrow">THE EDITOR’S DESK</p>
+          <h1>Welcome back.</h1>
+          <p>Sign in to maintain your portfolio.</p>
+          <form onSubmit={login}>
+            <Field
+              label="Email"
+              type="email"
+              autoComplete="username"
+              value={email}
+              onChange={setEmail}
+              required
+            />
+            <Field
+              label="Password"
+              type="password"
+              autoComplete="current-password"
+              value={password}
+              onChange={setPassword}
+              required
+            />
+            <button className="button" disabled={busy}>
+              {busy ? 'Signing in…' : 'Sign in ↗'}
+            </button>
+            <Feedback error={error} />
+          </form>
+          <p className="form-note">
+            First visit? Create an administrator with the setup command in the README.
+          </p>
+        </div>
+        <Link to="/">← Return to portfolio</Link>
+      </main>
+    );
+  const published = projects.filter((p) => p.status === 'published').length;
+  return (
+    <div className="admin-shell">
+      <a className="skip-link" href="#admin-main">
+        Skip to editor
+      </a>
+      <aside className="admin-sidebar">
+        <Link className="wordmark" to="/">
+          Mannan Sheth<span className="mark">↗</span>
+        </Link>
+        <p className="eyebrow">THE EDITOR’S DESK</p>
+        <ThemeToggle />
+        <nav aria-label="Admin navigation">
+          {[
+            ['dashboard', 'Overview'],
+            ['projects', 'Projects'],
+            ['import', 'GitHub import'],
+            ['profile', 'Profile & links'],
+            ['messages', 'Messages'],
+          ].map(([key, label]) => (
+            <button
+              className={view === key && !editor ? 'active' : ''}
+              key={key}
+              onClick={() => navigate(key)}
+            >
+              {label}
+              <span aria-hidden="true">↗</span>
+            </button>
+          ))}
+        </nav>
+        <div className="admin-account">
+          <small>{session.email}</small>
+          <button disabled={busy} onClick={logout}>
+            Sign out ↗
+          </button>
+          <Link to="/" target="_blank">
+            View portfolio ↗
+          </Link>
+        </div>
+      </aside>
+      <main id="admin-main" className="admin-main">
+        <Feedback error={error} message={message} />
+        {editor ? (
+          <ProjectEditor
+            key={editor.id || editor.repositoryUrl || 'new'}
+            initial={editor}
+            onSave={() => loadProjects()}
+            onCancel={() => {
+              setEditor(null);
+              loadProjects();
+            }}
+          />
+        ) : view === 'profile' ? (
+          <ProfileEditor onProfileChange={onProfileChange} />
+        ) : view === 'messages' ? (
+          <Messages />
+        ) : view === 'import' ? (
+          <Importer
+            onDraft={setEditor}
+            onExisting={(id) => setEditor(projects.find((p) => p.id === id))}
+          />
+        ) : (
+          <>
+            <div className="admin-title">
+              <div>
+                <p className="eyebrow">
+                  {view === 'dashboard' ? 'CONTENT AT A GLANCE' : 'THE PROJECT INDEX'}
+                </p>
+                <h1>{view === 'dashboard' ? 'Make it yours.' : 'Manage projects.'}</h1>
+              </div>
+              <button
+                className="button"
+                disabled={projectsLoading}
+                onClick={() => setEditor({ ...emptyProject, position: projects.length })}
+              >
+                New project +
+              </button>
+            </div>
+            {view === 'dashboard' && (
+              <>
+                <p className="admin-intro">
+                  A working journal, kept current. Review your project drafts, publish the strongest
+                  work, and keep the details personal.
+                </p>
+                <div className="stats">
+                  <div>
+                    <strong>{published}</strong>
+                    <span>Published projects</span>
+                  </div>
+                  <div>
+                    <strong>{projects.length - published}</strong>
+                    <span>Drafts to review</span>
+                  </div>
+                  <div>
+                    <strong>
+                      {projects.filter((p) => p.featured && p.status === 'published').length}
+                    </strong>
+                    <span>Featured on homepage</span>
+                  </div>
+                </div>
+                <div className="dashboard-shortcuts">
+                  <button onClick={() => navigate('import')}>
+                    <span>01 / SOURCE</span>
+                    <strong>Bring in a repository ↗</strong>
+                    <p>Inspect public code and build an editable draft.</p>
+                  </button>
+                  <button onClick={() => navigate('profile')}>
+                    <span>02 / CONTEXT</span>
+                    <strong>Update your profile ↗</strong>
+                    <p>Add your contact details, resume, and personal context.</p>
+                  </button>
+                </div>
+              </>
+            )}
+            {remove && (
+              <div className="review-box" role="alert">
+                <h2>Delete {remove.title}?</h2>
+                <p>This removes the portfolio record. The GitHub repository is unaffected.</p>
+                <div className="actions">
+                  <button className="danger" disabled={busy} onClick={deleteProject}>
+                    Delete project
+                  </button>
+                  <button onClick={() => setRemove(null)}>Cancel</button>
+                </div>
+              </div>
+            )}
+            <div className="project-table">
+              {projectsLoading && <p role="status">Loading project notes…</p>}
+              <div className="table-heading">
+                <h2>{view === 'dashboard' ? 'Your project notes' : 'Projects'}</h2>
+                <span>{projects.length} entries</span>
+              </div>
+              {projects.map((p, i) => (
+                <article key={p.id} className="admin-project">
+                  <div className="order-controls">
+                    <button
+                      aria-label={`Move ${p.title} up`}
+                      disabled={busy || i === 0}
+                      onClick={() => reorder(i, -1)}
+                    >
+                      ↑
+                    </button>
+                    <span>{String(i + 1).padStart(2, '0')}</span>
+                    <button
+                      aria-label={`Move ${p.title} down`}
+                      disabled={busy || i === projects.length - 1}
+                      onClick={() => reorder(i, 1)}
+                    >
+                      ↓
+                    </button>
+                  </div>
+                  <div className="admin-project-name">
+                    <button onClick={() => setEditor(p)}>{p.title}</button>
+                    <small>/{p.slug}</small>
+                  </div>
+                  <span className={`status-badge ${p.status}`}>{p.status}</span>
+                  <button
+                    className="feature-toggle"
+                    disabled={busy}
+                    aria-pressed={p.featured}
+                    onClick={() => toggle(p, 'featured')}
+                  >
+                    {p.featured ? '★ Featured' : '☆ Feature'}
+                  </button>
+                  <div className="actions">
+                    <button onClick={() => setEditor(p)}>Edit</button>
+                    <button disabled={busy} onClick={() => toggle(p, 'status')}>
+                      {p.status === 'draft' ? 'Publish' : 'Unpublish'}
+                    </button>
+                    <button className="delete-link" onClick={() => setRemove(p)}>
+                      Delete
+                    </button>
+                  </div>
+                </article>
+              ))}
+              {!projects.length && (
+                <p className="empty">No projects yet. Create one or import a public repository.</p>
+              )}
+            </div>
+          </>
+        )}
+      </main>
+    </div>
+  );
+}
