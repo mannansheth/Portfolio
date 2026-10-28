@@ -17,9 +17,11 @@ $env:FRONTEND_ORIGIN = 'https://your-domain.example'
 npm.cmd run start -w backend
 ```
 
-Production Express serves `frontend/dist`, including SPA routes such as `/work/curatus` and `/admin`. Place it behind an HTTPS reverse proxy and a process manager with automatic restart. Bind/firewall the API so only the proxy can access it; keep MySQL private. Set `TRUST_PROXY=1` only when requests come through one trusted proxy, which must overwrite `X-Forwarded-For`. Use the exact public origin (without trailing slash). Cookies are HTTP-only, SameSite=Strict and Secure in production; admin login therefore requires HTTPS. A separate frontend deployment must reverse proxy `/api` to this backend on the same origin; this avoids cross-site cookie issues.
+Production Express serves `frontend/dist`, including SPA routes such as `/work/curatus` and `/admin`. It binds to `127.0.0.1:3001` by default (`PORT` and `HOST` are configurable). Place it behind an HTTPS reverse proxy and a process manager with automatic restart. Keep the API and MySQL ports private; the proxy should be the only path to Express. Set `TRUST_PROXY=1` only when requests come through one trusted proxy, which must overwrite `X-Forwarded-For`. Use the exact public origin (without trailing slash). Cookies are HTTP-only, SameSite=Strict and Secure in production; admin login therefore requires HTTPS. A separate frontend deployment must reverse proxy `/api` to this backend on the same origin; this avoids cross-site cookie issues.
 
-Example nginx configuration (replace domain and certificate paths):
+Published profile and project records are cached in the Node process. The cache warms on startup and refreshes after admin content writes. On a routine refresh failure, the last known-good snapshot stays available and the cache retries later. After an admin write, public reads wait for a fresh snapshot so a deleted or unpublished project is not served from stale memory. This cache is process-local: run one Node process for this setup; multiple processes would need shared invalidation. Vite's hashed files under `assets/` receive a one-year immutable browser cache, `index.html` is revalidated, and other public files are cached for one hour.
+
+Example Nginx configuration for hosts already using Nginx (replace domain and certificate paths):
 
 ```nginx
 server {
@@ -42,6 +44,8 @@ server {
     return 301 https://$host$request_uri;
 }
 ```
+
+On the existing portfolio EC2, diagnostics showed Apache (`httpd`) owns ports 80 and 443 and the .NET app listens on `127.0.0.1:5000`. Use an additive Apache virtual host for the portfolio after inspecting the active Apache virtual hosts and proxy modules. Do not install Nginx or replace the current .NET vhost as part of this deployment. The EC2's MariaDB listener was shown on all interfaces; verify its security-group and host-firewall ingress before proceeding, and use a separate portfolio database and user without changing the existing .NET database account or global database settings.
 
 Back up MySQL regularly, including content and contact records. Restore into a separate database and verify before replacing production. Sessions expire after eight hours and expired rows are cleaned on login. Delete expired session rows periodically if needed. Apply a retention policy for contact messages directly in the database; the inbox shows the newest 200 records. Monitor `/api/health`, process logs, and SMTP failure statuses in the admin inbox.
 

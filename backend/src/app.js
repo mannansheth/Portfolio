@@ -11,9 +11,15 @@ import { config } from './config.js';
 import { query, pool } from './db.js';
 import { HttpError, profileSchema, contactSchema } from './validation.js';
 import { requireAdmin, hash, random, setSession, cookieToken } from './auth.js';
-import { json, projectRow, publicProject, listProjects, saveProject } from './projects.js';
+import { projectRow, listProjects, saveProject } from './projects.js';
 import { contributions, discover, inspect, parseRepository } from './github.js';
 import { generateDraft } from './ai.js';
+import {
+  getPublicProfile,
+  getPublicProjects,
+  getPublicProject,
+  refreshAfterPublicWrite,
+} from './public-content-cache.js';
 export const app = express();
 if (process.env.TRUST_PROXY === '1') app.set('trust proxy', 1);
 app.use(
@@ -57,12 +63,9 @@ app.get('/api/health', async (req, res) => {
   res.json({ data: { status: 'ok' } });
 });
 app.get('/api/profile', async (req, res) => {
-  const rows = await query('SELECT * FROM profile WHERE id=1');
-  if (!rows.length)
-    throw new HttpError(503, 'Portfolio content has not been initialized. Run setup.');
-  res.json({ data: { ...json(rows[0].data), version: rows[0].version } });
+  res.json({ data: await getPublicProfile() });
 });
-app.get('/api/projects', async (req, res) => res.json({ data: await listProjects(true) }));
+app.get('/api/projects', async (req, res) => res.json({ data: await getPublicProjects() }));
 app.get('/api/github/contributions', limited(20, 60000), async (req, res) => {
   const username = z
     .string()
@@ -72,11 +75,9 @@ app.get('/api/github/contributions', limited(20, 60000), async (req, res) => {
   res.json({ data: await contributions(username) });
 });
 app.get('/api/projects/:slug', async (req, res) => {
-  const rows = await query("SELECT * FROM projects WHERE slug=? AND status='published'", [
-    req.params.slug,
-  ]);
-  if (!rows.length) throw new HttpError(404, 'Project not found.');
-  res.json({ data: publicProject(projectRow(rows[0])) });
+  const project = await getPublicProject(req.params.slug);
+  if (!project) throw new HttpError(404, 'Project not found.');
+  res.json({ data: project });
 });
 app.post('/api/contact', limited(5, 15 * 60 * 1000), async (req, res) => {
   const p = contactSchema.parse(req.body);
@@ -153,12 +154,17 @@ app.post('/api/auth/logout', requireAdmin, async (req, res) => {
   res.json({ data: { success: true } });
 });
 app.use('/api/admin', requireAdmin);
+async function saveProjectAndRefresh(body, id) {
+  const project = await saveProject(body, id);
+  await refreshAfterPublicWrite();
+  return project;
+}
 app.get('/api/admin/projects', async (req, res) => res.json({ data: await listProjects() }));
 app.post('/api/admin/projects', async (req, res) =>
-  res.status(201).json({ data: await saveProject(req.body) }),
+  res.status(201).json({ data: await saveProjectAndRefresh(req.body) }),
 );
 app.put('/api/admin/projects/:id', async (req, res) =>
-  res.json({ data: await saveProject(req.body, Number(req.params.id)) }),
+  res.json({ data: await saveProjectAndRefresh(req.body, Number(req.params.id)) }),
 );
 app.delete('/api/admin/projects/:id', async (req, res) => {
   const version = z.number().int().positive().parse(req.body.version);
@@ -168,6 +174,7 @@ app.delete('/api/admin/projects/:id', async (req, res) => {
   ]);
   if (!result.affectedRows)
     throw new HttpError(409, 'Project changed or was deleted. Reload before deleting.');
+  await refreshAfterPublicWrite();
   res.json({ data: { success: true } });
 });
 app.post('/api/admin/reorder', async (req, res) => {
@@ -199,6 +206,7 @@ app.post('/api/admin/reorder', async (req, res) => {
   } finally {
     connection.release();
   }
+  await refreshAfterPublicWrite();
   res.json({ data: await listProjects() });
 });
 app.put('/api/admin/profile', async (req, res) => {
@@ -209,6 +217,7 @@ app.put('/api/admin/profile', async (req, res) => {
     [JSON.stringify(p), p.version],
   );
   if (!result.affectedRows) throw new HttpError(409, 'Profile changed. Reload before editing.');
+  await refreshAfterPublicWrite();
   res.json({ data: { ...p, version: p.version + 1 } });
 });
 app.get('/api/admin/contacts', async (req, res) =>
@@ -278,14 +287,29 @@ app.post('/api/admin/projects/:id/refresh', limited(10, 60000), async (req, res)
       throw new HttpError(409, 'Project changed. Reload before refreshing.');
     evidence.publicationChanged = true;
   } else await query('UPDATE projects SET evidence=? WHERE id=?', [JSON.stringify(evidence), p.id]);
+  await refreshAfterPublicWrite();
   res.json({ data: evidence });
 });
 if (config.production) {
   const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '../../frontend/dist');
-  app.use(express.static(root));
-  app.get('/{*path}', (req, res, next) =>
-    req.path.startsWith('/api/') ? next() : res.sendFile(path.join(root, 'index.html')),
+  app.use(
+    express.static(root, {
+      setHeaders(res, filePath) {
+        if (path.basename(filePath) === 'index.html') {
+          res.setHeader('Cache-Control', 'no-cache');
+        } else if (/[\\/]assets[\\/]/.test(filePath)) {
+          res.setHeader('Cache-Control', 'public, max-age=31536000, immutable');
+        } else {
+          res.setHeader('Cache-Control', 'public, max-age=3600');
+        }
+      },
+    }),
   );
+  app.get('/{*path}', (req, res, next) => {
+    if (req.path.startsWith('/api/')) return next();
+    res.setHeader('Cache-Control', 'no-cache');
+    return res.sendFile(path.join(root, 'index.html'));
+  });
 }
 app.use((req, res) => res.status(404).json({ error: 'Endpoint not found.' }));
 app.use((err, req, res, next) => {
