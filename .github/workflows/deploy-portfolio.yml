@@ -13,6 +13,12 @@ on:
       - 'package.json'
       - 'package-lock.json'
   workflow_dispatch:
+    inputs:
+      approve_deploy:
+        description: Deploy this commit to the portfolio EC2 instance
+        required: true
+        type: boolean
+        default: false
 
 concurrency:
   group: portfolio-production
@@ -25,6 +31,26 @@ jobs:
   build-and-deploy:
     runs-on: ubuntu-latest
     timeout-minutes: 30
+    services:
+      mariadb:
+        image: mariadb:10.5
+        env:
+          MARIADB_ROOT_PASSWORD: ci-test-only
+          MARIADB_ROOT_HOST: '%'
+          MARIADB_DATABASE: portfolio_ci
+        ports:
+          - 3306:3306
+        options: >-
+          --health-cmd="healthcheck.sh --connect --innodb_initialized"
+          --health-interval=10s
+          --health-timeout=5s
+          --health-retries=10
+    env:
+      DB_HOST: 127.0.0.1
+      DB_PORT: 3306
+      DB_USER: root
+      DB_PASSWORD: ci-test-only
+      DB_NAME: portfolio_ci
 
     steps:
       - name: Check out portfolio source
@@ -55,6 +81,7 @@ jobs:
         run: docker save portfolio:${GITHUB_SHA} | gzip -1 > portfolio-image.tar.gz
 
       - name: Copy image archive to EC2
+        if: ${{ github.event_name == 'workflow_dispatch' && inputs.approve_deploy && github.ref == 'refs/heads/main' }}
         uses: appleboy/scp-action@v0.1.7
         with:
           host: ${{ secrets.SERVER_IP }}
@@ -65,6 +92,7 @@ jobs:
           overwrite: true
 
       - name: Load, check, and activate portfolio image
+        if: ${{ github.event_name == 'workflow_dispatch' && inputs.approve_deploy && github.ref == 'refs/heads/main' }}
         uses: appleboy/ssh-action@v1.0.3
         env:
           IMAGE_TAG: portfolio:${{ github.sha }}
