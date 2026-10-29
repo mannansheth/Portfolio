@@ -6,16 +6,17 @@ const identities = {
   curatus: { category: 'Wellbeing / web application' },
   pathfinder: {
     category: 'Algorithms / interactive',
-    image: '/images/work/pathfinder.png',
+    image: `${import.meta.env.BASE_URL}images/work/pathfinder.png`,
   },
   adaptq: { category: 'Machine learning / research' },
-  wordle: { category: 'Play / web application', image: '/images/work/wordle.png' },
+  wordle: { category: 'Play / web application', image: `${import.meta.env.BASE_URL}images/work/wordle.png` },
   reportr: { category: 'Civic tech / mobile' },
   recipeverse: { category: 'Food / web application' },
 };
 
 function ProjectCover({ project, identity }) {
-  const source = project.coverImage || project.images?.find(Boolean) || identity.image;
+  const rawSource = project.coverImage || project.images?.find(Boolean) || identity.image;
+  const source = rawSource?.startsWith('/') ? `${import.meta.env.BASE_URL}${rawSource.slice(1)}` : rawSource;
   const [failed, setFailed] = useState(false);
   useEffect(() => setFailed(false), [source]);
   return (

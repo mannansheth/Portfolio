@@ -341,19 +341,20 @@ const technologyIcons = {
   HTML: 'html5/html5-original.svg',
   CSS: 'css3/css3-original.svg',
   'GitHub Actions': 'githubactions/githubactions-original.svg',
-  PennyLane: '/images/skills/pennylane.svg',
-  'NumPy / SciPy': '/images/skills/numpy-scipy.svg',
-  SQL: '/images/skills/sql.svg',
-  SVM: '/images/skills/svm.svg',
-  XGBoost: '/images/skills/xgboost.svg',
-  'AWS EC2': '/images/skills/aws-ec2.svg',
-  NLP: '/images/skills/nlp.svg',
+  PennyLane: 'local:pennylane.svg',
+  'NumPy / SciPy': 'local:numpy-scipy.svg',
+  SQL: 'local:sql.svg',
+  SVM: 'local:svm.svg',
+  XGBoost: 'local:xgboost.svg',
+  'AWS EC2': 'local:aws-ec2.svg',
+  NLP: 'local:nlp.svg',
 };
+const publicAsset = (path) => `${import.meta.env.BASE_URL}${path.replace(/^\//, '')}`;
 function technologyIcon(item) {
   if (item === 'SciPy') return 'https://cdn.simpleicons.org/scipy';
   const path = technologyIcons[item];
-  if (!path) return '/images/skills/toolkit.svg';
-  if (path.startsWith('/')) return path;
+  if (!path) return publicAsset('images/skills/toolkit.svg');
+  if (path.startsWith('local:')) return publicAsset(`images/skills/${path.slice(6)}`);
   return `https://cdn.jsdelivr.net/gh/devicons/devicon@latest/icons/${path}`;
 }
 export function Tags({ items = [], graphic = false }) {
@@ -372,7 +373,7 @@ export function Tags({ items = [], graphic = false }) {
               onError={(event) => {
                 if (event.currentTarget.dataset.fallback) return;
                 event.currentTarget.dataset.fallback = 'true';
-                event.currentTarget.src = '/images/skills/toolkit.svg';
+                event.currentTarget.src = publicAsset('images/skills/toolkit.svg');
               }}
             />
             <span className="tech-label">{item}</span>

@@ -1,6 +1,7 @@
 ARG NODE_VERSION=24
 
 FROM node:${NODE_VERSION}-bookworm-slim AS build
+ARG VITE_BASE_PATH=/portfolio/
 WORKDIR /app
 
 COPY package.json package-lock.json ./
@@ -9,7 +10,7 @@ COPY frontend/package.json frontend/package.json
 RUN npm ci
 
 COPY frontend ./frontend
-RUN npm run build --workspace frontend
+RUN VITE_BASE_PATH="$VITE_BASE_PATH" npm run build --workspace frontend
 
 FROM node:${NODE_VERSION}-bookworm-slim AS production-dependencies
 WORKDIR /app

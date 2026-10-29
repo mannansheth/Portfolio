@@ -1,7 +1,7 @@
 import { useEffect, useRef } from 'react';
 
 // Drop a portrait at this path to activate the pixel reveal; no component edits needed.
-const PORTRAIT_SRC = '/images/portrait.jpg';
+const PORTRAIT_SRC = `${import.meta.env.BASE_URL}images/portrait.jpg`;
 
 export default function PortraitReveal() {
   const frame = useRef(null);

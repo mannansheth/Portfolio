@@ -211,7 +211,7 @@ function Home({ profile, projects }) {
         </div>
         <figure className="home-hero-cover">
           <PixelRevealImage
-            src="/images/work/atlas-cover.jpg"
+            src={`${import.meta.env.BASE_URL}images/work/atlas-cover.jpg`}
             alt="Abstract illuminated screens and connections, used as portfolio cover artwork."
             fetchPriority="high"
             objectPositionY={0.56}

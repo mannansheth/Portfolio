@@ -96,7 +96,7 @@ export default function ProjectAtlas({ projects }) {
         </div>
         <figure className="atlas-cover">
           <PixelRevealImage
-            src="/images/work/atlas-cover.jpg"
+            src={`${import.meta.env.BASE_URL}images/work/atlas-cover.jpg`}
             alt="Abstract network of illuminated screens, used as a visual cover for the project map."
             fetchPriority="high"
             objectPositionY={0.58}

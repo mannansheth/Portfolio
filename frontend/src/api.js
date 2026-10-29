@@ -3,7 +3,7 @@ export function setCsrf(value) {
   csrfToken = value || '';
 }
 export async function api(path, options = {}) {
-  const response = await fetch(`/api${path}`, {
+  const response = await fetch(`${import.meta.env.BASE_URL}api${path}`, {
     credentials: 'include',
     ...options,
     headers: {
