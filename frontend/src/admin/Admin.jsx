@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { Link } from 'react-router-dom';
+import { Link, useLocation, useNavigate } from 'react-router-dom';
 import { api, setCsrf } from '../api.js';
 import { Field, Feedback, Icon } from '../components.jsx';
 import ProjectEditor, { emptyProject } from './ProjectEditor.jsx';
@@ -9,9 +9,21 @@ import Messages from './Messages.jsx';
 import Analytics from './Analytics.jsx';
 import { ThemeToggle } from '../Theme.jsx';
 export default function Admin({ onProfileChange }) {
+  const location = useLocation();
+  const routerNavigate = useNavigate();
+  const adminPath = location.pathname.replace(/\/+$/, '') || '/admin';
+  const editRoute = adminPath.match(/^\/admin\/projects\/(new|\d+)$/);
+  const routeViews = {
+    '/admin': 'dashboard',
+    '/admin/analytics': 'analytics',
+    '/admin/projects': 'projects',
+    '/admin/import': 'import',
+    '/admin/profile': 'profile',
+    '/admin/messages': 'messages',
+  };
+  const view = routeViews[adminPath] || (editRoute ? 'projects' : 'dashboard');
   const [session, setSession] = useState(null),
     [checking, setChecking] = useState(true),
-    [view, setView] = useState('dashboard'),
     [projects, setProjects] = useState([]),
     [projectsLoading, setProjectsLoading] = useState(true),
     [editor, setEditor] = useState(null),
@@ -49,6 +61,10 @@ export default function Admin({ onProfileChange }) {
   useEffect(() => {
     if (session) loadProjects();
   }, [session]);
+  useEffect(() => {
+    if (!checking && session && !routeViews[adminPath] && !editRoute)
+      routerNavigate('/admin', { replace: true });
+  }, [adminPath, checking, session]);
   async function login(e) {
     e.preventDefault();
     setBusy(true);
@@ -83,7 +99,14 @@ export default function Admin({ onProfileChange }) {
   }
   function navigate(next) {
     setEditor(null);
-    setView(next);
+    routerNavigate(next === 'dashboard' ? '/admin' : `/admin/${next}`);
+    setError('');
+    setMessage('');
+    setRemove(null);
+  }
+  function openProjectEditor(project) {
+    setEditor(project);
+    routerNavigate(`/admin/projects/${project.id || 'new'}`);
     setError('');
     setMessage('');
     setRemove(null);
@@ -198,6 +221,16 @@ export default function Admin({ onProfileChange }) {
         <Link to="/"><Icon name="left" /> Return to portfolio</Link>
       </main>
     );
+  const editorMatchesRoute = editRoute && editor && (editRoute[1] === 'new'
+    ? !editor.id
+    : String(editor.id) === editRoute[1]);
+  const activeEditor = editRoute
+    ? editorMatchesRoute
+      ? editor
+      : editRoute[1] === 'new'
+        ? { ...emptyProject, position: projects.length }
+        : projects.find((project) => String(project.id) === editRoute[1])
+    : null;
   const published = projects.filter((p) => p.status === 'published').length;
   return (
     <div className="admin-shell">
@@ -220,7 +253,7 @@ export default function Admin({ onProfileChange }) {
             ['messages', 'Messages'],
           ].map(([key, label]) => (
             <button
-              className={view === key && !editor ? 'active' : ''}
+              className={view === key && !activeEditor ? 'active' : ''}
               key={key}
               onClick={() => navigate(key)}
             >
@@ -241,14 +274,21 @@ export default function Admin({ onProfileChange }) {
       </aside>
       <main id="admin-main" className="admin-main">
         <Feedback error={error} message={message} />
-        {editor ? (
+        {activeEditor ? (
           <ProjectEditor
-            key={editor.id || editor.repositoryUrl || 'new'}
-            initial={editor}
-            onSave={() => loadProjects()}
+            key={activeEditor.id || activeEditor.repositoryUrl || 'new'}
+            initial={activeEditor}
+            onSave={(saved) => {
+              if (saved?.id) {
+                setEditor(saved);
+                routerNavigate(`/admin/projects/${saved.id}`, { replace: true });
+              }
+              loadProjects();
+            }}
             onCancel={() => {
               setEditor(null);
               loadProjects();
+              navigate('projects');
             }}
           />
         ) : view === 'profile' ? (
@@ -259,8 +299,11 @@ export default function Admin({ onProfileChange }) {
           <Analytics />
         ) : view === 'import' ? (
           <Importer
-            onDraft={setEditor}
-            onExisting={(id) => setEditor(projects.find((p) => p.id === id))}
+            onDraft={openProjectEditor}
+            onExisting={(id) => {
+              const project = projects.find((p) => p.id === id);
+              if (project) openProjectEditor(project);
+            }}
           />
         ) : (
           <>
@@ -274,7 +317,7 @@ export default function Admin({ onProfileChange }) {
               <button
                 className="button"
                 disabled={projectsLoading}
-                onClick={() => setEditor({ ...emptyProject, position: projects.length })}
+                onClick={() => openProjectEditor({ ...emptyProject, position: projects.length })}
               >
                 New project <Icon name="plus" />
               </button>
@@ -353,7 +396,7 @@ export default function Admin({ onProfileChange }) {
                     </button>
                   </div>
                   <div className="admin-project-name">
-                    <button onClick={() => setEditor(p)}>{p.title}</button>
+                    <button onClick={() => openProjectEditor(p)}>{p.title}</button>
                     <small>/{p.slug}</small>
                   </div>
                   <span className={`status-badge ${p.status}`}>{p.status}</span>
@@ -366,7 +409,7 @@ export default function Admin({ onProfileChange }) {
                     <><Icon name="star" /> {p.featured ? 'Featured' : 'Feature'}</>
                   </button>
                   <div className="actions">
-                    <button onClick={() => setEditor(p)}>Edit</button>
+                    <button onClick={() => openProjectEditor(p)}>Edit</button>
                     <button disabled={busy} onClick={() => toggle(p, 'status')}>
                       {p.status === 'draft' ? 'Publish' : 'Unpublish'}
                     </button>
