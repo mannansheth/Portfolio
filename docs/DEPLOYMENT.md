@@ -1,11 +1,37 @@
 # Production deployment
 
-Use Node.js 22.12+ and MySQL 8+ (also verified against MariaDB 10.4). Build from the lockfile:
+Use Node.js 24 LTS for container builds and MySQL 8+ (also verified against MariaDB 10.4). Build from the lockfile:
 
 ```powershell
 npm.cmd ci
 npm.cmd run build
 ```
+
+## Docker image
+
+The repository Dockerfile builds the React frontend and packages it with Express on Node.js 24 LTS. It uses a Debian Bookworm runtime, installs only production dependencies in the final image, and runs as the unprivileged `node` user. The app listens on port 3001 inside the container; publish that port on host loopback when Apache is the public reverse proxy. Runtime settings and credentials must be provided to the container at startup and are not copied into the image. The Docker build context excludes `.env` files, local research data, dependencies, and generated output.
+
+Build and start the image with an environment file that points to the portfolio database:
+
+```sh
+docker build -t portfolio:latest .
+docker run -d --name portfolio \
+  --restart unless-stopped \
+  --add-host=host.docker.internal:host-gateway \
+  --env-file /path/to/portfolio.env \
+  -p 127.0.0.1:3001:3001 \
+  portfolio:latest
+```
+
+The environment file must include `DB_HOST=host.docker.internal`, `DB_PORT`, `DB_USER`, `DB_PASSWORD`, `DB_NAME`, `FRONTEND_ORIGIN`, and `NODE_ENV=production`. `HOST=0.0.0.0` is set in the image so the service is reachable through Docker's loopback-only host port mapping. Keep database credentials outside the image and repository. For a new database, initialize the schema with a database account that has temporary `CREATE` permission, then remove that permission from the runtime account. Do not run setup against an already imported production database without first checking its schema and contents. Check readiness with `docker inspect --format '{{.State.Health.Status}}' portfolio`; the health check requires a working database connection.
+
+The current EC2 deployment runs Docker Engine on Amazon Linux 2. The portfolio container uses its own Debian Bookworm userspace and Node runtime; the existing .NET application remains a separate host service. Amazon Linux 2 is out of support, so plan an OS migration separately.
+
+## GitHub Actions deployment
+
+`.github/workflows/deploy-portfolio.yml` runs on relevant pushes to `main` or through manual workflow dispatch. It installs locked dependencies, runs backend tests and a production dependency audit, builds the frontend and an AMD64 Docker image, then transfers a compressed image archive to EC2 over SSH. Configure `SERVER_IP`, `SERVER_USER`, and `SSH_PRIVATE_KEY` as Actions secrets in the Portfolio repository. `SERVER_USER` should be `ec2-user`; `SSH_PRIVATE_KEY` is the private-key file contents used by the deployment. The workflow loads the image, starts a temporary candidate on `127.0.0.1:13002`, checks container and database health, then replaces only the `portfolio` container on `127.0.0.1:3001`. It reads the existing `/etc/portfolio/portfolio.env` file and never stops the .NET service or writes to `/var/www/html/Finance`.
+
+This workflow deploys the portfolio service but does not expose it publicly. It remains reachable through an SSH tunnel until a portfolio hostname, HTTPS certificate, and additive Apache virtual host are configured.
 
 Create a production database with `utf8mb4`, then fill `backend/.env` using the template. Use a dedicated database user. For schema initialization it needs CREATE; runtime requires SELECT, INSERT, UPDATE and DELETE on the portfolio database. After running `npm.cmd run setup`, remove CREATE from the runtime user. Keep secrets outside version control and limit file access. No static admin password or session signing secret is used: sessions are opaque random tokens whose hashes live in MySQL.
 

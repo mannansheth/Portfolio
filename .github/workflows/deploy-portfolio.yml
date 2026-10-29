@@ -1,0 +1,164 @@
+name: Deploy portfolio container
+
+on:
+  push:
+    branches:
+      - main
+    paths:
+      - '.dockerignore'
+      - '.github/workflows/deploy-portfolio.yml'
+      - 'Dockerfile'
+      - 'backend/**'
+      - 'frontend/**'
+      - 'package.json'
+      - 'package-lock.json'
+  workflow_dispatch:
+
+concurrency:
+  group: portfolio-production
+  cancel-in-progress: false
+
+permissions:
+  contents: read
+
+jobs:
+  build-and-deploy:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+
+    steps:
+      - name: Check out portfolio source
+        uses: actions/checkout@v4
+
+      - name: Set up Node.js 24
+        uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: npm
+
+      - name: Install locked dependencies
+        run: npm ci
+
+      - name: Audit production dependencies
+        run: npm audit --omit=dev
+
+      - name: Run backend tests
+        run: npm test
+
+      - name: Check backend and build frontend
+        run: npm run check
+
+      - name: Build Linux AMD64 image
+        run: docker build --platform linux/amd64 --tag portfolio:${GITHUB_SHA} .
+
+      - name: Export compressed image
+        run: docker save portfolio:${GITHUB_SHA} | gzip -1 > portfolio-image.tar.gz
+
+      - name: Copy image archive to EC2
+        uses: appleboy/scp-action@v0.1.7
+        with:
+          host: ${{ secrets.SERVER_IP }}
+          username: ${{ secrets.SERVER_USER }}
+          key: ${{ secrets.SSH_PRIVATE_KEY }}
+          source: portfolio-image.tar.gz
+          target: /home/ec2-user/
+          overwrite: true
+
+      - name: Load, check, and activate portfolio image
+        uses: appleboy/ssh-action@v1.0.3
+        env:
+          IMAGE_TAG: portfolio:${{ github.sha }}
+        with:
+          host: ${{ secrets.SERVER_IP }}
+          username: ${{ secrets.SERVER_USER }}
+          key: ${{ secrets.SSH_PRIVATE_KEY }}
+          envs: IMAGE_TAG
+          script: |
+            set -eu
+
+            archive=/home/ec2-user/portfolio-image.tar.gz
+            candidate=portfolio-next
+            old_image=$(sudo docker inspect --format '{{.Config.Image}}' portfolio 2>/dev/null || true)
+
+            sudo docker load --input "$archive"
+            sudo docker rm --force "$candidate" >/dev/null 2>&1 || true
+            sudo docker run --detach \
+              --name "$candidate" \
+              --add-host=host.docker.internal:host-gateway \
+              --env-file /etc/portfolio/portfolio.env \
+              --publish 127.0.0.1:13002:3001 \
+              "$IMAGE_TAG"
+
+            candidate_health=starting
+            for attempt in $(seq 1 45); do
+              candidate_health=$(sudo docker inspect --format '{{.State.Health.Status}}' "$candidate" 2>/dev/null || true)
+              if [ "$candidate_health" = healthy ]; then
+                break
+              fi
+              if [ "$candidate_health" = unhealthy ]; then
+                break
+              fi
+              sleep 2
+            done
+
+            if [ "$candidate_health" != healthy ]; then
+              sudo docker logs --tail 100 "$candidate" || true
+              sudo docker rm --force "$candidate" >/dev/null 2>&1 || true
+              rm -f "$archive"
+              exit 1
+            fi
+
+            curl --fail --silent --show-error http://127.0.0.1:13002/api/health >/dev/null
+            sudo docker rm --force portfolio >/dev/null 2>&1 || true
+
+            if ! sudo docker run --detach \
+              --name portfolio \
+              --restart unless-stopped \
+              --add-host=host.docker.internal:host-gateway \
+              --env-file /etc/portfolio/portfolio.env \
+              --publish 127.0.0.1:3001:3001 \
+              "$IMAGE_TAG"; then
+              if [ -n "$old_image" ]; then
+                sudo docker run --detach \
+                  --name portfolio \
+                  --restart unless-stopped \
+                  --add-host=host.docker.internal:host-gateway \
+                  --env-file /etc/portfolio/portfolio.env \
+                  --publish 127.0.0.1:3001:3001 \
+                  "$old_image" || true
+              fi
+              sudo docker rm --force "$candidate" >/dev/null 2>&1 || true
+              exit 1
+            fi
+
+            active_health=starting
+            for attempt in $(seq 1 45); do
+              active_health=$(sudo docker inspect --format '{{.State.Health.Status}}' portfolio 2>/dev/null || true)
+              if [ "$active_health" = healthy ]; then
+                break
+              fi
+              if [ "$active_health" = unhealthy ]; then
+                break
+              fi
+              sleep 2
+            done
+
+            if [ "$active_health" != healthy ]; then
+              sudo docker logs --tail 100 portfolio || true
+              sudo docker rm --force portfolio >/dev/null 2>&1 || true
+              if [ -n "$old_image" ]; then
+                sudo docker run --detach \
+                  --name portfolio \
+                  --restart unless-stopped \
+                  --add-host=host.docker.internal:host-gateway \
+                  --env-file /etc/portfolio/portfolio.env \
+                  --publish 127.0.0.1:3001:3001 \
+                  "$old_image" || true
+              fi
+              sudo docker rm --force "$candidate" >/dev/null 2>&1 || true
+              exit 1
+            fi
+
+            curl --fail --silent --show-error http://127.0.0.1:3001/api/health >/dev/null
+            sudo docker rm --force "$candidate" >/dev/null 2>&1 || true
+            rm -f "$archive"

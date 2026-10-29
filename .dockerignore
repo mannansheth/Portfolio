@@ -1,0 +1,15 @@
+.git
+.gitignore
+.local
+.research
+node_modules
+**/node_modules
+frontend/dist
+**/.env
+**/.env.*
+!**/.env.example
+backend/data/*.research.json
+*.log
+coverage
+test-results
+playwright-report

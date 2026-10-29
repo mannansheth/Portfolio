@@ -19,6 +19,14 @@ const resumeLink = z
       .refine((v) => !v.split('/').includes('..'), 'Use a path within this site'),
   ])
   .default('');
+const imageSource = z.union([
+  url,
+  z
+    .string()
+    .max(2000)
+    .regex(/^\/(?!\/)[A-Za-z0-9_./-]+$/)
+    .refine((v) => !v.split('/').includes('..'), 'Use an image path within this site'),
+]);
 const list = (length, max) =>
   z
     .array(text(length))
@@ -72,7 +80,7 @@ export const projectSchema = z.object({
   suggestedSections: list(100, 15),
   coverImage: url,
   images: z
-    .array(url)
+    .array(imageSource)
     .max(12)
     .transform((items) => items.filter(Boolean))
     .default([]),
