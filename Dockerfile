@@ -31,6 +31,7 @@ COPY --chown=node:node package.json ./package.json
 COPY --chown=node:node backend/package.json backend/package.json
 COPY --chown=node:node backend/src backend/src
 COPY --chown=node:node backend/scripts backend/scripts
+COPY --chown=node:node backend/migrations backend/migrations
 COPY --chown=node:node backend/schema.sql backend/schema.sql
 COPY --chown=node:node backend/data/seed.js backend/data/seed.js
 COPY --from=build --chown=node:node /app/frontend/dist frontend/dist

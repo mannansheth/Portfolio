@@ -10,6 +10,7 @@ frontend/dist
 !**/.env.example
 backend/data/*.research.json
 *.log
+*.mmdb
 coverage
 test-results
 playwright-report

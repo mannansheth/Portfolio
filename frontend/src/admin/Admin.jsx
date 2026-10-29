@@ -6,6 +6,7 @@ import ProjectEditor, { emptyProject } from './ProjectEditor.jsx';
 import Importer from './Importer.jsx';
 import ProfileEditor from './ProfileEditor.jsx';
 import Messages from './Messages.jsx';
+import Analytics from './Analytics.jsx';
 import { ThemeToggle } from '../Theme.jsx';
 export default function Admin({ onProfileChange }) {
   const [session, setSession] = useState(null),
@@ -212,6 +213,7 @@ export default function Admin({ onProfileChange }) {
         <nav aria-label="Admin navigation">
           {[
             ['dashboard', 'Overview'],
+            ['analytics', 'Analytics'],
             ['projects', 'Projects'],
             ['import', 'GitHub import'],
             ['profile', 'Profile & links'],
@@ -253,6 +255,8 @@ export default function Admin({ onProfileChange }) {
           <ProfileEditor onProfileChange={onProfileChange} />
         ) : view === 'messages' ? (
           <Messages />
+        ) : view === 'analytics' ? (
+          <Analytics />
         ) : view === 'import' ? (
           <Importer
             onDraft={setEditor}

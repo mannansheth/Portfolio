@@ -9,6 +9,7 @@ import { fileURLToPath } from 'node:url';
 import { z } from 'zod';
 import { config } from './config.js';
 import { query, pool } from './db.js';
+import { getAnalyticsReport, recordAnalyticsEvent } from './analytics.js';
 import { HttpError, profileSchema, contactSchema } from './validation.js';
 import { requireAdmin, hash, random, setSession, cookieToken } from './auth.js';
 import { projectRow, listProjects, saveProject } from './projects.js';
@@ -78,6 +79,57 @@ app.get('/api/projects/:slug', async (req, res) => {
   const project = await getPublicProject(req.params.slug);
   if (!project) throw new HttpError(404, 'Project not found.');
   res.json({ data: project });
+});
+const analyticsEventSchema = z.object({
+  visitorId: z.uuid(),
+  sessionId: z.uuid(),
+  type: z.enum([
+    'page_view',
+    'page_engagement',
+    'scroll_depth',
+    'project_impression',
+    'project_open',
+    'project_select',
+    'project_filter',
+    'cover_reveal',
+    'outbound_click',
+    'resume_download',
+    'contact_submit',
+  ]),
+  path: z
+    .string()
+    .min(1)
+    .max(255)
+    .refine((value) => value.startsWith('/') && !value.includes('?') && !value.includes('#')),
+  referrerHost: z
+    .string()
+    .max(253)
+    .regex(/^[a-zA-Z0-9.-]+$/)
+    .optional(),
+  data: z.object({
+    projectSlug: z.string().max(120).regex(/^[a-z0-9-]+$/).optional(),
+    value: z.string().max(80).regex(/^[\p{L}\p{N} ._/-]*$/u).optional(),
+    target: z.enum(['github', 'linkedin', 'email', 'demo', 'repository', 'resume', 'project-notes']).optional(),
+    activeSeconds: z.number().int().min(0).max(3600).optional(),
+    scrollPercent: z.number().int().min(0).max(100).optional(),
+  }).strict().optional(),
+});
+let analyticsSchemaWarningShown = false;
+app.post('/api/analytics/event', limited(180, 60000), async (req, res) => {
+  if (!config.frontendOrigins.includes(req.get('origin') || ''))
+    throw new HttpError(403, 'Analytics events must come from the configured portfolio origin.');
+  const event = analyticsEventSchema.parse(req.body);
+  if (event.path.startsWith('/admin')) return res.status(204).end();
+  try {
+    await recordAnalyticsEvent(event, req);
+  } catch (error) {
+    if (error.code !== 'ER_NO_SUCH_TABLE') throw error;
+    if (!analyticsSchemaWarningShown) {
+      analyticsSchemaWarningShown = true;
+      console.warn('Detailed analytics schema is not initialized; visitor events are being skipped.');
+    }
+  }
+  res.status(204).end();
 });
 app.post('/api/contact', limited(5, 15 * 60 * 1000), async (req, res) => {
   const p = contactSchema.parse(req.body);
@@ -154,6 +206,16 @@ app.post('/api/auth/logout', requireAdmin, async (req, res) => {
   res.json({ data: { success: true } });
 });
 app.use('/api/admin', requireAdmin);
+app.get('/api/admin/analytics', async (req, res) => {
+  const days = z.coerce.number().int().min(1).max(365).default(30).parse(req.query.days);
+  try {
+    res.json({ data: await getAnalyticsReport(days) });
+  } catch (error) {
+    if (error.code === 'ER_NO_SUCH_TABLE')
+      throw new HttpError(503, 'Detailed analytics tables are not initialized. Apply the detailed analytics migration first.');
+    throw error;
+  }
+});
 async function saveProjectAndRefresh(body, id) {
   const project = await saveProject(body, id);
   await refreshAfterPublicWrite();

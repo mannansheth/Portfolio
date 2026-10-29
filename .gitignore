@@ -11,3 +11,4 @@ test-results/
 playwright-report/
 backend/data/*.research.json
 *.log
+*.mmdb

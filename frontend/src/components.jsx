@@ -2,22 +2,36 @@ import { Link, NavLink, useLocation } from 'react-router-dom';
 import { useEffect, useState, useId, useRef } from 'react';
 import { ThemeToggle } from './Theme.jsx';
 import { Icon } from './Icon.jsx';
+import { trackAnalytics } from './analytics.js';
 export { Icon } from './Icon.jsx';
 export function External({ href, children, ...props }) {
   return href ? (
-    <a href={href} target="_blank" rel="noopener noreferrer" {...props}>
+    <a
+      href={href}
+      target="_blank"
+      rel="noopener noreferrer"
+      {...props}
+      onClick={(event) => {
+        const host = (() => {
+          try { return new URL(href).hostname; } catch { return ''; }
+        })();
+        trackAnalytics('outbound_click', { value: host.slice(0, 80) });
+        props.onClick?.(event);
+      }}
+    >
       {children}
     </a>
   ) : null;
 }
 
-export function PixelRevealImage({ src, alt, objectPositionY = 0.5, fetchPriority = 'auto' }) {
+export function PixelRevealImage({ src, alt, objectPositionY = 0.5, fetchPriority = 'auto', analyticsLabel = 'cover' }) {
   const frameRef = useRef(null);
   const imageRef = useRef(null);
   const canvasRef = useRef(null);
   const drawRef = useRef(() => {});
   const pointRef = useRef(null);
   const touchActiveRef = useRef(false);
+  const trackedRevealRef = useRef(false);
   const [active, setActive] = useState(false);
 
   useEffect(() => {
@@ -105,6 +119,10 @@ export function PixelRevealImage({ src, alt, objectPositionY = 0.5, fetchPriorit
       y: Math.max(0, Math.min(bounds.height, clientY - bounds.top)),
     };
     setActive(true);
+    if (!trackedRevealRef.current) {
+      trackedRevealRef.current = true;
+      trackAnalytics('cover_reveal', { value: analyticsLabel });
+    }
     drawRef.current();
   };
 
@@ -268,7 +286,7 @@ export function Footer({ profile }) {
       </div>
       <div className="footer-links">
         {profile.resumeUrl && (
-          <a href={profile.resumeUrl} download>
+          <a href={profile.resumeUrl} download onClick={() => trackAnalytics('resume_download')}>
             Resume <Icon name="external" />
           </a>
         )}
@@ -282,6 +300,11 @@ export function Footer({ profile }) {
         </span>
         <span>{profile.location}</span>
       </div>
+      <p className="analytics-disclosure">
+        First-party analytics stores a random browser ID to group visits, records selected
+        interactions, and estimates location from your IP address. The raw IP is not saved in the
+        analytics database. Interaction and reading metrics are estimates.
+      </p>
     </footer>
   );
 }

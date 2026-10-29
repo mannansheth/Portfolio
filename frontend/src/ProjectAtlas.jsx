@@ -1,6 +1,7 @@
 import { useMemo, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { External, Tags, PixelRevealImage, Icon } from './components.jsx';
+import { trackAnalytics } from './analytics.js';
 import './atlas.css';
 
 const unassignedLabel = 'Needs a connection';
@@ -69,6 +70,7 @@ export default function ProjectAtlas({ projects }) {
     : [];
 
   function choosePath(pathId) {
+    if (pathId !== activePath) trackAnalytics('project_filter', { value: pathId });
     setActivePath(pathId);
     if (pathId !== 'all') {
       const firstSlug = paths
@@ -100,6 +102,7 @@ export default function ProjectAtlas({ projects }) {
             alt="Abstract network of illuminated screens, used as a visual cover for the project map."
             fetchPriority="high"
             objectPositionY={0.58}
+            analyticsLabel="work-map-cover"
           />
           <figcaption>
             <span>FIELD NOTES / 2026</span>
@@ -165,7 +168,12 @@ export default function ProjectAtlas({ projects }) {
                       type="button"
                       key={project.slug}
                       aria-pressed={selected?.slug === project.slug}
-                      onClick={() => setSelectedSlug(project.slug)}
+                      data-analytics-project={project.slug}
+                      onClick={() => {
+                        if (selected?.slug !== project.slug)
+                          trackAnalytics('project_select', { projectSlug: project.slug });
+                        setSelectedSlug(project.slug);
+                      }}
                     >
                       <span className="atlas-node-number">
                         {String((project.position ?? 0) + 1).padStart(2, '0')}
@@ -221,7 +229,7 @@ export default function ProjectAtlas({ projects }) {
               <Tags items={selected.technologies} />
             </div>
             <div className="atlas-actions">
-              <Link className="atlas-case-link" to={`/work/${selected.slug}`}>
+              <Link className="atlas-case-link" to={`/work/${selected.slug}`} onClick={() => trackAnalytics('project_open', { projectSlug: selected.slug })}>
                 Open case file <Icon name="external" />
               </Link>
               {selected.demoUrl && <External href={selected.demoUrl}>Live demo <Icon name="external" /></External>}
@@ -244,7 +252,7 @@ export default function ProjectAtlas({ projects }) {
         <ol>
           {projects.map((project) => (
             <li key={project.slug}>
-              <Link to={`/work/${project.slug}`}>
+              <Link to={`/work/${project.slug}`} onClick={() => trackAnalytics('project_open', { projectSlug: project.slug })}>
                 <span className="atlas-index-number">
                   {String((project.position ?? 0) + 1).padStart(2, '0')}
                 </span>

@@ -14,7 +14,9 @@ import {
   Icon,
 } from './components.jsx';
 import Admin from './admin/Admin.jsx';
+import AnalyticsTracker from './AnalyticsTracker.jsx';
 import ProjectAtlas from './ProjectAtlas.jsx';
+import { trackAnalytics } from './analytics.js';
 
 function setPageMetadata(title, description) {
   document.title = title;
@@ -157,6 +159,8 @@ function HomeProjectCard({ project }) {
         className="home-project-visual"
         to={href}
         aria-label={`Open ${project.title} case file`}
+        data-analytics-project={project.slug}
+        onClick={() => trackAnalytics('project_open', { projectSlug: project.slug })}
       >
         {project.images?.[0] ? (
           <img src={project.images[0]} alt={`${project.title} interface preview`} loading="lazy" />
@@ -171,7 +175,7 @@ function HomeProjectCard({ project }) {
       </Link>
       <div className="home-project-copy">
         <h3>
-          <Link to={href}>{project.title}</Link>
+          <Link to={href} onClick={() => trackAnalytics('project_open', { projectSlug: project.slug })}>{project.title}</Link>
         </h3>
         <p>{project.tagline}</p>
         <div className="home-project-connections" aria-label="Project connections">
@@ -181,7 +185,7 @@ function HomeProjectCard({ project }) {
         </div>
         <div className="home-project-bottom">
           <span>{project.technologies.slice(0, 3).join(' / ')}</span>
-          <Link to={href}>Case file <Icon name="external" /></Link>
+          <Link to={href} onClick={() => trackAnalytics('project_open', { projectSlug: project.slug })}>Case file <Icon name="external" /></Link>
         </div>
       </div>
     </article>
@@ -215,6 +219,7 @@ function Home({ profile, projects }) {
             alt="Abstract illuminated screens and connections, used as portfolio cover artwork."
             fetchPriority="high"
             objectPositionY={0.56}
+            analyticsLabel="home-cover"
           />
           <figcaption>
             <span>FIELD NOTES / MANNAN SHETH</span>
@@ -346,6 +351,7 @@ function Contact({ profile }) {
     setMessage('');
     try {
       const result = await api('/contact', { method: 'POST', body: form });
+      trackAnalytics('contact_submit');
       setMessage(result.message);
       setForm({ name: '', email: '', message: '', website: '' });
     } catch (e) {
@@ -367,7 +373,7 @@ function Contact({ profile }) {
           </p>
           <p>You can reach me through the form or find my work on GitHub.</p>
           <div className="contact-links">
-            {profile.email && <a href={`mailto:${profile.email}`}>{profile.email} <Icon name="external" /></a>}
+            {profile.email && <a href={`mailto:${profile.email}`} onClick={() => trackAnalytics('outbound_click', { target: 'email' })}>{profile.email} <Icon name="external" /></a>}
             <External href={profile.linkedin}>LinkedIn <Icon name="external" /></External>
             <External href={profile.github}>GitHub <Icon name="external" /></External>
           </div>
@@ -522,6 +528,7 @@ export default function App() {
     );
   return (
     <>
+      <AnalyticsTracker enabled={!isAdmin && Boolean(profile)} />
       <a className="skip-link" href="#main-content">
         Skip to content
       </a>
