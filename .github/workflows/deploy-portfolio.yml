@@ -127,7 +127,7 @@ jobs:
               --restart unless-stopped \
               --add-host=host.docker.internal:host-gateway \
               --env-file /etc/portfolio/portfolio.env \
-              --publish 127.0.0.1:3001:3001 \
+              --publish 127.0.0.1:13001:3001 \
               "$IMAGE_TAG"; then
               if [ -n "$old_image" ]; then
                 sudo docker run --detach \
@@ -135,7 +135,7 @@ jobs:
                   --restart unless-stopped \
                   --add-host=host.docker.internal:host-gateway \
                   --env-file /etc/portfolio/portfolio.env \
-                  --publish 127.0.0.1:3001:3001 \
+                  --publish 127.0.0.1:13001:3001 \
                   "$old_image" || true
               fi
               sudo docker rm --force "$candidate" >/dev/null 2>&1 || true
@@ -163,13 +163,13 @@ jobs:
                   --restart unless-stopped \
                   --add-host=host.docker.internal:host-gateway \
                   --env-file /etc/portfolio/portfolio.env \
-                  --publish 127.0.0.1:3001:3001 \
+                  --publish 127.0.0.1:13001:3001 \
                   "$old_image" || true
               fi
               sudo docker rm --force "$candidate" >/dev/null 2>&1 || true
               exit 1
             fi
 
-            curl --fail --silent --show-error http://127.0.0.1:3001/api/health >/dev/null
+            curl --fail --silent --show-error http://127.0.0.1:13001/api/health >/dev/null
             sudo docker rm --force "$candidate" >/dev/null 2>&1 || true
             rm -f "$archive"
