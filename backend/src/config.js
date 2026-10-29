@@ -8,10 +8,16 @@ const frontendOrigins = [
     .map((value) => value.trim())
     .filter(Boolean),
 ];
+const production = process.env.NODE_ENV === 'production';
+const secureCookies =
+  process.env.COOKIE_SECURE === undefined
+    ? production
+    : process.env.COOKIE_SECURE === '1';
 export const config = {
   port: Number(process.env.PORT || 3001),
   host: process.env.HOST || '127.0.0.1',
   forceHttps: process.env.FORCE_HTTPS === '1',
   frontendOrigins: [...new Set(frontendOrigins)],
-  production: process.env.NODE_ENV === 'production',
+  production,
+  secureCookies,
 };

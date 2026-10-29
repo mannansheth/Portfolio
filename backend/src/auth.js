@@ -38,7 +38,7 @@ export async function requireAdmin(req, res, next) {
 export function setSession(res, token) {
   res.cookie('portfolio_session', token, {
     httpOnly: true,
-    secure: config.production,
+    secure: config.secureCookies,
     sameSite: 'strict',
     path: '/',
     maxAge: 8 * 60 * 60 * 1000,

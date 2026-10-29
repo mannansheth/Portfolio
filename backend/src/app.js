@@ -147,7 +147,7 @@ app.post('/api/auth/logout', requireAdmin, async (req, res) => {
   await query('DELETE FROM sessions WHERE token_hash=?', [hash(cookieToken(req))]);
   res.clearCookie('portfolio_session', {
     path: '/',
-    secure: config.production,
+    secure: config.secureCookies,
     httpOnly: true,
     sameSite: 'strict',
   });
