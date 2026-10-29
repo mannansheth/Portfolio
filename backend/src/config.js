@@ -11,6 +11,7 @@ const frontendOrigins = [
 export const config = {
   port: Number(process.env.PORT || 3001),
   host: process.env.HOST || '127.0.0.1',
+  forceHttps: process.env.FORCE_HTTPS === '1',
   frontendOrigins: [...new Set(frontendOrigins)],
   production: process.env.NODE_ENV === 'production',
 };

@@ -27,7 +27,7 @@ app.use(
     contentSecurityPolicy: {
       directives: {
         imgSrc: ["'self'", 'https:', 'data:'],
-        upgradeInsecureRequests: config.production ? [] : null,
+        upgradeInsecureRequests: config.forceHttps ? [] : null,
       },
     },
   }),
