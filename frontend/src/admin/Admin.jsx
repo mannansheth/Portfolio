@@ -24,6 +24,7 @@ export default function Admin({ onProfileChange }) {
   const view = routeViews[adminPath] || (editRoute ? 'projects' : 'dashboard');
   const [session, setSession] = useState(null),
     [checking, setChecking] = useState(true),
+    [adminMenuOpen, setAdminMenuOpen] = useState(false),
     [projects, setProjects] = useState([]),
     [projectsLoading, setProjectsLoading] = useState(true),
     [editor, setEditor] = useState(null),
@@ -61,6 +62,7 @@ export default function Admin({ onProfileChange }) {
   useEffect(() => {
     if (session) loadProjects();
   }, [session]);
+  useEffect(() => setAdminMenuOpen(false), [location.pathname]);
   useEffect(() => {
     if (!checking && session && !routeViews[adminPath] && !editRoute)
       routerNavigate('/admin', { replace: true });
@@ -237,39 +239,52 @@ export default function Admin({ onProfileChange }) {
       <a className="skip-link" href="#admin-main">
         Skip to editor
       </a>
-      <aside className="admin-sidebar">
-        <Link className="wordmark" to="/">
-          Mannan Sheth<span className="mark"><Icon name="external" /></span>
-        </Link>
-        <p className="eyebrow">THE EDITOR’S DESK</p>
-        <ThemeToggle />
-        <nav aria-label="Admin navigation">
-          {[
-            ['dashboard', 'Overview'],
-            ['analytics', 'Analytics'],
-            ['projects', 'Projects'],
-            ['import', 'GitHub import'],
-            ['profile', 'Profile & links'],
-            ['messages', 'Messages'],
-          ].map(([key, label]) => (
-            <button
-              className={view === key && !activeEditor ? 'active' : ''}
-              key={key}
-              onClick={() => navigate(key)}
-            >
-              {label}
-              <Icon name="external" />
-            </button>
-          ))}
-        </nav>
-        <div className="admin-account">
-          <small>{session.email}</small>
-          <button disabled={busy} onClick={logout}>
-            Sign out <Icon name="external" />
-          </button>
-          <Link to="/" target="_blank">
-            View portfolio <Icon name="external" />
+      <aside className={`admin-sidebar${adminMenuOpen ? ' menu-open' : ''}`}>
+        <div className="admin-sidebar-top">
+          <Link className="wordmark" to="/">
+            Mannan Sheth<span className="mark"><Icon name="external" /></span>
           </Link>
+          <button
+            className="admin-menu-toggle"
+            type="button"
+            aria-expanded={adminMenuOpen}
+            aria-controls="admin-navigation-panel"
+            onClick={() => setAdminMenuOpen((open) => !open)}
+          >
+            {adminMenuOpen ? 'Close' : 'Menu'} <Icon name={adminMenuOpen ? 'minus' : 'plus'} />
+          </button>
+        </div>
+        <div id="admin-navigation-panel" className="admin-sidebar-content">
+          <p className="eyebrow">THE EDITOR’S DESK</p>
+          <ThemeToggle />
+          <nav aria-label="Admin navigation">
+            {[
+              ['dashboard', 'Overview'],
+              ['analytics', 'Analytics'],
+              ['projects', 'Projects'],
+              ['import', 'GitHub import'],
+              ['profile', 'Profile & links'],
+              ['messages', 'Messages'],
+            ].map(([key, label]) => (
+              <button
+                className={view === key && !activeEditor ? 'active' : ''}
+                key={key}
+                onClick={() => navigate(key)}
+              >
+                {label}
+                <Icon name="external" />
+              </button>
+            ))}
+          </nav>
+          <div className="admin-account">
+            <small>{session.email}</small>
+            <button disabled={busy} onClick={logout}>
+              Sign out <Icon name="external" />
+            </button>
+            <Link to="/" target="_blank">
+              View portfolio <Icon name="external" />
+            </Link>
+          </div>
         </div>
       </aside>
       <main id="admin-main" className="admin-main">

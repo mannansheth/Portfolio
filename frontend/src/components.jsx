@@ -222,7 +222,6 @@ export function Header({ profile }) {
         <span className="mark"><Icon name="external" /></span>
       </Link>
       <div className="header-controls">
-        <ThemeToggle />
         <button
           className="menu-toggle"
           aria-expanded={open}
@@ -238,6 +237,9 @@ export function Header({ profile }) {
         <NavLink to="/contact">
           Contact <Icon name="external" />
         </NavLink>
+        <div className="header-theme-control">
+          <ThemeToggle />
+        </div>
       </nav>
     </header>
   );

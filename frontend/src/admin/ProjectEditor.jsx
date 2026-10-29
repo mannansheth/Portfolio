@@ -261,46 +261,56 @@ export default function ProjectEditor({ initial, onSave, onCancel }) {
                 </button>
               ))}
             </div>
-            {[
-              ['overview', 'Overview'],
-              ['problem', 'Problem & purpose'],
-              ['outcomes', 'Results & validation'],
-              ['architecture', 'Architecture & decisions'],
-              ['contribution', 'My individual contribution'],
-              ['challenges', 'Challenges & trade-offs'],
-              ['learnings', 'Learnings'],
-            ].map(([key, label]) => (
-              <Field
-                key={key}
-                label={label}
-                value={project[key]}
-                multiline
-                rows={key === 'architecture' ? 6 : 4}
-                onChange={(v) => change(key, v)}
-                hint={
-                  key === 'outcomes'
-                    ? 'Use only measured results or documented evaluation. Leave unsupported impact blank.'
-                    : undefined
-                }
-                maxLength={key === 'architecture' ? 15000 : key === 'outcomes' ? 5000 : 10000}
-              />
-            ))}
-            {[
-              ['features', 'Key features'],
-              ['technologies', 'Technologies & roles'],
-              ['missingInformation', 'Missing information / private review notes'],
-              ['suggestedSections', 'Suggested sections / private review notes'],
-            ].map(([key, label]) => (
-              <Field
-                key={key}
-                label={label}
-                value={project[key].join('\n')}
-                multiline
-                rows={4}
-                onChange={(v) => change(key, v.split('\n'))}
-                hint="One item per line. Empty lines are removed on save."
-              />
-            ))}
+            <details className="editor-section-disclosure">
+              <summary>Project story and engineering decisions</summary>
+              <div className="editor-section-content">
+                {[
+                  ['overview', 'Overview'],
+                  ['problem', 'Problem & purpose'],
+                  ['outcomes', 'Results & validation'],
+                  ['architecture', 'Architecture & decisions'],
+                  ['contribution', 'My individual contribution'],
+                  ['challenges', 'Challenges & trade-offs'],
+                  ['learnings', 'Learnings'],
+                ].map(([key, label]) => (
+                  <Field
+                    key={key}
+                    label={label}
+                    value={project[key]}
+                    multiline
+                    rows={key === 'architecture' ? 6 : 4}
+                    onChange={(v) => change(key, v)}
+                    hint={
+                      key === 'outcomes'
+                        ? 'Use only measured results or documented evaluation. Leave unsupported impact blank.'
+                        : undefined
+                    }
+                    maxLength={key === 'architecture' ? 15000 : key === 'outcomes' ? 5000 : 10000}
+                  />
+                ))}
+              </div>
+            </details>
+            <details className="editor-section-disclosure">
+              <summary>Features, technologies, and review notes</summary>
+              <div className="editor-section-content">
+                {[
+                  ['features', 'Key features'],
+                  ['technologies', 'Technologies & roles'],
+                  ['missingInformation', 'Missing information / private review notes'],
+                  ['suggestedSections', 'Suggested sections / private review notes'],
+                ].map(([key, label]) => (
+                  <Field
+                    key={key}
+                    label={label}
+                    value={project[key].join('\n')}
+                    multiline
+                    rows={4}
+                    onChange={(v) => change(key, v.split('\n'))}
+                    hint="One item per line. Empty lines are removed on save."
+                  />
+                ))}
+              </div>
+            </details>
           </div>
           <aside className="editor-side">
             <div className="panel">
@@ -357,8 +367,8 @@ export default function ProjectEditor({ initial, onSave, onCancel }) {
                     : 'Save draft'}
               </button>
             </div>
-            <div className="panel">
-              <h2>Links & images</h2>
+            <details className="panel editor-panel-disclosure">
+              <summary>Links & images</summary>
               {[
                 ['repositoryUrl', 'GitHub repository'],
                 ['demoUrl', 'Live demo URL'],
@@ -379,9 +389,9 @@ export default function ProjectEditor({ initial, onSave, onCancel }) {
                 onChange={(v) => change('images', v.split('\n'))}
                 hint="One HTTPS image URL per line. No file uploads."
               />
-            </div>
-            <div className="panel">
-              <h2>Repository evidence</h2>
+            </details>
+            <details className="panel editor-panel-disclosure">
+              <summary>Repository evidence</summary>
               {project.repositoryPrivate && (
                 <label className="check-field">
                   <input
@@ -436,7 +446,7 @@ export default function ProjectEditor({ initial, onSave, onCancel }) {
               >
                 {busy ? 'Working…' : 'Generate / regenerate with Gemini'}
               </button>
-            </div>
+            </details>
           </aside>
         </form>
       )}
